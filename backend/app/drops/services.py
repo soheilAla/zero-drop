@@ -13,7 +13,7 @@ from app.drops.schemas import DropCreateRequest
 
 def decode_base64url(value: str) -> bytes:
     try:
-        return base64.urlsafe_b64decode(value + "=" * (-len(value % 4)))
+        return base64.urlsafe_b64decode(value + "=" * (-len(value) % 4))
     except (ValueError, binascii.Error):
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
@@ -21,7 +21,7 @@ def decode_base64url(value: str) -> bytes:
         )
 
 
-async def create_drop(db: AsyncSession, data: DropCreateRequest):
+async def create_drop(db: AsyncSession, data: DropCreateRequest) -> Drop:
     ciphertext = decode_base64url(data.ciphertext)
     content_iv = decode_base64url(data.content_iv)
     kdf_salt = decode_base64url(data.kdf_salt) if data.kdf_salt else None
