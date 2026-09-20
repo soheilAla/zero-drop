@@ -3,12 +3,12 @@ from datetime import datetime
 from pydantic import BaseModel, ConfigDict, Field
 
 
-class DropCreate(BaseModel):
+class DropCreateRequest(BaseModel):
     ciphertext: str = Field(min_length=1)
     content_iv: str
     kdf_salt: str | None = Field(default=None)
     crypto_version: int = Field(default=1, ge=1)
-    expires_in_seconds: int = Field(ge=1)
+    expiration_seconds: int = Field(ge=1)
     remaining_views: int | None = Field(default=None, ge=1)
 
 
