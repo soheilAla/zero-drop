@@ -3,22 +3,24 @@ import binascii
 import secrets
 from datetime import UTC, datetime, timedelta
 
-from fastapi import HTTPException, status
+from sqlalchemy import case, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
+from app.drops.exceptions import DropError, DropTooLargeError
 from app.drops.models import Drop
 from app.drops.schemas import DropCreateRequest
+
+
+def encode_base64url(value: bytes) -> str:
+    return base64.urlsafe_b64encode(value).rstrip(b"=").decode("ascii")
 
 
 def decode_base64url(value: str) -> bytes:
     try:
         return base64.urlsafe_b64decode(value + "=" * (-len(value) % 4))
     except (ValueError, binascii.Error):
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-            detail="Invalid Base64 URL",
-        )
+        raise DropError("Invalid Base64 URL")
 
 
 async def create_drop(db: AsyncSession, data: DropCreateRequest) -> Drop:
@@ -27,44 +29,25 @@ async def create_drop(db: AsyncSession, data: DropCreateRequest) -> Drop:
     kdf_salt = decode_base64url(data.kdf_salt) if data.kdf_salt else None
 
     if len(ciphertext) == 0:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-            detail="Drop cannot be empty",
-        )
+        raise DropError("Drop cannot be empty")
 
     if len(ciphertext) > settings.max_drop_size_bytes:
-        raise HTTPException(
-            status_code=status.HTTP_413_CONTENT_TOO_LARGE, detail="Drop is too large"
-        )
+        raise DropTooLargeError("Drop is too large")
 
     if len(content_iv) != 12:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-            detail="Invalid Initialization Vector",
-        )
+        raise DropError("Invalid Initialization Vector")
 
     if data.crypto_version != 1:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-            detail="Unsupported encryption protocol version",
-        )
+        raise DropError("Unsupported encryption protocol version")
 
     if kdf_salt and len(kdf_salt) < 16:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="Invalid KDF salt"
-        )
+        raise DropError("Invalid KDF salt")
 
     if data.expiration_seconds < settings.min_expiration_seconds:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-            detail="Expiration time is too short",
-        )
+        raise DropError("Expiration time is too short")
 
     if data.expiration_seconds > settings.max_expiration_seconds:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-            detail="Expiration time exceeds maximum allowed",
-        )
+        raise DropError("Expiration time is too long")
 
     expires_at = datetime.now(UTC) + timedelta(seconds=data.expiration_seconds)
 
@@ -82,5 +65,33 @@ async def create_drop(db: AsyncSession, data: DropCreateRequest) -> Drop:
     db.add(drop)
     await db.commit()
     await db.refresh(drop)
+
+    return drop
+
+
+async def get_drop(db: AsyncSession, drop_id: str) -> Drop | None:
+    stmt = (
+        update(Drop)
+        .where(
+            Drop.id == drop_id,
+            Drop.expires_at > datetime.now(UTC),
+            (Drop.remaining_views.is_(None) | Drop.remaining_views > 0),
+        )
+        .values(
+            remaining_views=case(
+                (Drop.remaining_views.is_(None), None),
+                else_=Drop.remaining_views - 1,
+            )
+        )
+        .returning(Drop)
+    )
+
+    result = await db.execute(stmt)
+    drop = result.scalar_one_or_none()
+
+    if not drop:
+        return None
+
+    await db.commit()
 
     return drop

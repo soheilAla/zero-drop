@@ -1,9 +1,9 @@
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
-from app.drops.schemas import DropCreateRequest, DropCreateResponse
-from app.drops.services import create_drop
+from app.drops.schemas import DropCreateRequest, DropCreateResponse, DropResponse
+from app.drops.services import create_drop, encode_base64url, get_drop
 
 router = APIRouter(prefix="/drops", tags=["drops"])
 
@@ -18,4 +18,24 @@ async def create_drop_router(
 
     return DropCreateResponse(
         id=drop.id, expires_at=drop.expires_at, remaining_views=drop.remaining_views
+    )
+
+
+@router.get("/{drop_id}", response_model=DropResponse)
+async def get_drop_router(drop_id: str, db: AsyncSession = Depends(get_db)):
+    drop = await get_drop(db, drop_id)
+
+    if not drop:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Drop not found"
+        )
+
+    return DropResponse(
+        id=drop.id,
+        ciphertext=encode_base64url(drop.ciphertext),
+        content_iv=encode_base64url(drop.content_iv),
+        kdf_salt=encode_base64url(drop.kdf_salt) if drop.kdf_salt else None,
+        crypto_version=drop.crypto_version,
+        expires_at=drop.expires_at,
+        remaining_views=drop.remaining_views,
     )

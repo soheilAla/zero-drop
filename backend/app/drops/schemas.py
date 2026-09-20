@@ -23,7 +23,7 @@ class DropResponse(BaseModel):
 
     id: str
     ciphertext: str
-    contetn_id: str
+    content_iv: str
     kdf_salt: str | None
     crypto_version: int
     expires_at: datetime
