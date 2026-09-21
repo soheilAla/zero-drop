@@ -166,10 +166,6 @@ function handleCreateDrop() {
   if (hasError) {
     return;
   }
-
-  console.log("Entered secret:", secret.value);
-  console.log("Expiration seconds:", expirationSeconds.value);
-  console.log("Remaining views:", remainingViews.value);
 }
 </script>
 
