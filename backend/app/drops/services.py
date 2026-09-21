@@ -3,11 +3,11 @@ import binascii
 import secrets
 from datetime import UTC, datetime, timedelta
 
-from sqlalchemy import case, update
+from sqlalchemy import case, delete, or_, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
-from app.drops.exceptions import DropError, DropTooLargeError
+from app.drops.exceptions import DropTooLargeError, DropValidationError
 from app.drops.models import Drop
 from app.drops.schemas import DropCreateRequest
 
@@ -20,7 +20,7 @@ def decode_base64url(value: str) -> bytes:
     try:
         return base64.urlsafe_b64decode(value + "=" * (-len(value) % 4))
     except (ValueError, binascii.Error):
-        raise DropError("Invalid Base64 URL")
+        raise DropValidationError("Invalid Base64 URL")
 
 
 async def create_drop(db: AsyncSession, data: DropCreateRequest) -> Drop:
@@ -29,25 +29,25 @@ async def create_drop(db: AsyncSession, data: DropCreateRequest) -> Drop:
     kdf_salt = decode_base64url(data.kdf_salt) if data.kdf_salt else None
 
     if len(ciphertext) == 0:
-        raise DropError("Drop cannot be empty")
+        raise DropValidationError("Drop cannot be empty")
 
     if len(ciphertext) > settings.max_drop_size_bytes:
         raise DropTooLargeError("Drop is too large")
 
     if len(content_iv) != 12:
-        raise DropError("Invalid Initialization Vector")
+        raise DropValidationError("Invalid Initialization Vector")
 
     if data.crypto_version != 1:
-        raise DropError("Unsupported encryption protocol version")
+        raise DropValidationError("Unsupported encryption protocol version")
 
     if kdf_salt and len(kdf_salt) < 16:
-        raise DropError("Invalid KDF salt")
+        raise DropValidationError("Invalid KDF salt")
 
     if data.expiration_seconds < settings.min_expiration_seconds:
-        raise DropError("Expiration time is too short")
+        raise DropValidationError("Expiration time is too short")
 
     if data.expiration_seconds > settings.max_expiration_seconds:
-        raise DropError("Expiration time is too long")
+        raise DropValidationError("Expiration time is too long")
 
     expires_at = datetime.now(UTC) + timedelta(seconds=data.expiration_seconds)
 
@@ -75,7 +75,7 @@ async def get_drop(db: AsyncSession, drop_id: str) -> Drop | None:
         .where(
             Drop.id == drop_id,
             Drop.expires_at > datetime.now(UTC),
-            (Drop.remaining_views.is_(None) | Drop.remaining_views > 0),
+            or_(Drop.remaining_views.is_(None), Drop.remaining_views > 0),
         )
         .values(
             remaining_views=case(
@@ -95,3 +95,10 @@ async def get_drop(db: AsyncSession, drop_id: str) -> Drop | None:
     await db.commit()
 
     return drop
+
+
+async def cleanup_expired_drops(db: AsyncSession) -> None:
+    stmt = delete(Drop).where(Drop.expires_at < datetime.now(UTC))
+
+    await db.execute(stmt)
+    await db.commit()
