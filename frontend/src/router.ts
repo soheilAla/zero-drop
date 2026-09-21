@@ -1,5 +1,5 @@
 import { createRouter, createWebHistory } from "vue-router";
-import CreateDrop from "./components/CreateDrop.vue";
+import CreateDrop from "./views/CreateDrop.vue";
 import DropView from "./views/DropView.vue";
 
 const router = createRouter({
