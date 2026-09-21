@@ -1,13 +1,16 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
 
+const MIN_EXPIRATION_SECONDS = 60;
+const MAX_EXPIRATION_SECONDS = 604800; // 7 days
+
 const secret = ref("");
 const days = ref(0);
 const hours = ref(1);
 const minutes = ref(0);
 
-const burnAfterRead = ref(true);
-const isUnlimited = ref(false);
+const burnAfterRead = ref(false);
+const isUnlimited = ref(true);
 const customViews = ref<number | null>(5);
 const viewsError = ref("");
 
@@ -23,6 +26,20 @@ const remainingViews = computed<number | null>(() => {
     : null;
 });
 
+const isViewsInputDisabled = computed(
+  () => burnAfterRead.value || isUnlimited.value,
+);
+
+const displayViewsValue = computed(() => {
+  if (burnAfterRead.value) {
+    return "1";
+  }
+  if (isUnlimited.value) {
+    return "Unlimited";
+  }
+  return customViews.value ?? "";
+});
+
 const errorMessage = ref("");
 const durationError = ref("");
 
@@ -33,16 +50,76 @@ const expirationSeconds = computed(() => {
   return d * 86400 + h * 3600 + m * 60;
 });
 
+const isFormValid = computed(() => {
+  const hasSecret = secret.value.trim().length > 0;
+  const hasValidExpiration =
+    expirationSeconds.value >= MIN_EXPIRATION_SECONDS &&
+    expirationSeconds.value <= MAX_EXPIRATION_SECONDS;
+  const hasValidViews =
+    burnAfterRead.value ||
+    isUnlimited.value ||
+    (customViews.value !== null && customViews.value >= 1);
+
+  return hasSecret && hasValidExpiration && hasValidViews;
+});
+
 function handleInput() {
   if (errorMessage.value && secret.value.trim()) {
     errorMessage.value = "";
   }
 }
 
-function handleDurationInput() {
-  if (durationError.value && expirationSeconds.value > 0) {
+function normalizeDuration() {
+  const d = Math.max(0, Math.floor(Number(days.value) || 0));
+  const h = Math.max(0, Math.floor(Number(hours.value) || 0));
+  const m = Math.max(0, Math.floor(Number(minutes.value) || 0));
+
+  const totalMinutes = d * 1440 + h * 60 + m;
+  days.value = Math.floor(totalMinutes / 1440);
+  const remainingMinutes = totalMinutes % 1440;
+  hours.value = Math.floor(remainingMinutes / 60);
+  minutes.value = remainingMinutes % 60;
+}
+
+function validateDuration() {
+  normalizeDuration();
+
+  if (expirationSeconds.value < MIN_EXPIRATION_SECONDS) {
+    durationError.value = "Total duration must be at least 1 minute.";
+    return false;
+  } else if (expirationSeconds.value > MAX_EXPIRATION_SECONDS) {
+    durationError.value = "Total duration cannot exceed 7 days.";
+    return false;
+  } else {
     durationError.value = "";
+    return true;
   }
+}
+
+function toggleBurnAfterRead() {
+  burnAfterRead.value = !burnAfterRead.value;
+  if (burnAfterRead.value) {
+    isUnlimited.value = false;
+  } else {
+    isUnlimited.value = false;
+    if (!customViews.value || customViews.value < 1) {
+      customViews.value = 5;
+    }
+  }
+  viewsError.value = "";
+}
+
+function toggleUnlimited() {
+  if (!isUnlimited.value) {
+    isUnlimited.value = true;
+    burnAfterRead.value = false;
+  } else {
+    isUnlimited.value = false;
+    if (!customViews.value || customViews.value < 1) {
+      customViews.value = 5;
+    }
+  }
+  viewsError.value = "";
 }
 
 function handleViewsInput(event: Event) {
@@ -51,6 +128,21 @@ function handleViewsInput(event: Event) {
   customViews.value = isNaN(val) ? null : val;
   if (viewsError.value && customViews.value && customViews.value >= 1) {
     viewsError.value = "";
+  }
+}
+
+function validateViews() {
+  if (burnAfterRead.value || isUnlimited.value) {
+    viewsError.value = "";
+    return true;
+  }
+
+  if (!customViews.value || customViews.value < 1) {
+    viewsError.value = "Remaining views must be at least 1.";
+    return false;
+  } else {
+    viewsError.value = "";
+    return true;
   }
 }
 
@@ -64,22 +156,11 @@ function handleCreateDrop() {
     errorMessage.value = "";
   }
 
-  if (expirationSeconds.value <= 0) {
-    durationError.value = "Total duration must be greater than zero.";
-    hasError = true;
-  } else {
-    durationError.value = "";
-  }
+  const durationValid = validateDuration();
+  const viewsValid = validateViews();
 
-  if (!burnAfterRead.value && !isUnlimited.value) {
-    if (!customViews.value || customViews.value < 1) {
-      viewsError.value = "Remaining views must be at least 1.";
-      hasError = true;
-    } else {
-      viewsError.value = "";
-    }
-  } else {
-    viewsError.value = "";
+  if (!durationValid || !viewsValid) {
+    hasError = true;
   }
 
   if (hasError) {
@@ -94,16 +175,15 @@ function handleCreateDrop() {
 
 <template>
   <section
-    class="w-full max-w-xl p-6 bg-surface rounded-xl border border-border"
+    class="w-full max-w-xl p-6 sm:p-8 bg-surface rounded-xl border border-border"
   >
-    <h1 class="text-2xl font-semibold text-text mb-4">Create a secure drop</h1>
+    <h1 class="text-2xl sm:text-3xl font-bold text-text mb-6">
+      Create a secure drop
+    </h1>
 
-    <div class="space-y-4">
+    <div class="space-y-5">
       <div>
-        <label
-          for="secret"
-          class="block text-sm font-medium text-text-muted mb-1.5"
-        >
+        <label for="secret" class="block text-base font-medium text-text mb-2">
           Secret Message
         </label>
         <textarea
@@ -113,95 +193,96 @@ function handleCreateDrop() {
           rows="6"
           placeholder="Enter your sensitive text here..."
           :class="[
-            'w-full p-3 text-sm rounded-lg bg-background text-text placeholder-text-subtle focus:outline-none transition-colors resize-y border',
+            'w-full p-3.5 text-base leading-relaxed rounded-lg bg-background text-text placeholder-text-subtle focus:outline-none transition-colors resize-y border',
             errorMessage
               ? 'border-danger focus:border-danger'
               : 'border-border focus:border-text',
           ]"
         ></textarea>
-        <p v-if="errorMessage" class="mt-1.5 text-xs text-danger">
+        <p v-if="errorMessage" class="mt-2 text-sm font-medium text-danger">
           {{ errorMessage }}
         </p>
       </div>
 
       <!-- Expiration Duration -->
       <div>
-        <label class="block text-sm font-medium text-text-muted mb-1.5">
+        <label class="block text-base font-medium text-text mb-2">
           Expiration Duration
         </label>
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div>
             <label
               for="duration-days"
-              class="block text-xs font-medium text-text-subtle mb-1"
+              class="block text-sm font-medium text-text-muted mb-1.5"
             >
               Days
             </label>
             <input
               id="duration-days"
               v-model.number="days"
-              @input="handleDurationInput"
+              @blur="validateDuration"
               type="number"
               min="0"
-              class="w-full p-2.5 text-sm rounded-lg border border-border bg-background text-text focus:outline-none focus:border-text transition-colors text-center"
+              step="1"
+              class="w-full p-2.5 text-base rounded-lg border border-border bg-background text-text focus:outline-none focus:border-text transition-colors text-center"
             />
           </div>
 
           <div>
             <label
               for="duration-hours"
-              class="block text-xs font-medium text-text-subtle mb-1"
+              class="block text-sm font-medium text-text-muted mb-1.5"
             >
               Hours
             </label>
             <input
               id="duration-hours"
               v-model.number="hours"
-              @input="handleDurationInput"
+              @blur="validateDuration"
               type="number"
               min="0"
-              max="23"
-              class="w-full p-2.5 text-sm rounded-lg border border-border bg-background text-text focus:outline-none focus:border-text transition-colors text-center"
+              step="1"
+              class="w-full p-2.5 text-base rounded-lg border border-border bg-background text-text focus:outline-none focus:border-text transition-colors text-center"
             />
           </div>
 
           <div>
             <label
               for="duration-minutes"
-              class="block text-xs font-medium text-text-subtle mb-1"
+              class="block text-sm font-medium text-text-muted mb-1.5"
             >
               Minutes
             </label>
             <input
               id="duration-minutes"
               v-model.number="minutes"
-              @input="handleDurationInput"
+              @blur="validateDuration"
               type="number"
               min="0"
-              max="59"
-              class="w-full p-2.5 text-sm rounded-lg border border-border bg-background text-text focus:outline-none focus:border-text transition-colors text-center"
+              step="1"
+              class="w-full p-2.5 text-base rounded-lg border border-border bg-background text-text focus:outline-none focus:border-text transition-colors text-center"
             />
           </div>
         </div>
-        <p v-if="durationError" class="mt-1.5 text-xs text-danger">
+        <p v-if="durationError" class="mt-2 text-sm font-medium text-danger">
           {{ durationError }}
         </p>
       </div>
 
       <!-- Views Limit -->
       <div class="space-y-3">
-        <label class="block text-sm font-medium text-text-muted">
+        <label class="block text-base font-medium text-text">
           Views Limit
         </label>
 
         <div
-          class="flex items-center justify-between p-3 rounded-lg border border-border bg-background"
+          class="flex items-center justify-between p-3.5 rounded-lg border border-border bg-background"
         >
           <div class="pr-4">
-            <span class="block text-sm font-medium text-text"
-              >Burn after read</span
-            >
-            <span class="block text-xs text-text-subtle">
+            <span class="block text-base font-medium text-text">
+              Burn after read
+            </span>
+            <span class="block text-sm text-text-muted mt-0.5">
               Drop will be permanently deleted after the first view
             </span>
           </div>
@@ -209,7 +290,7 @@ function handleCreateDrop() {
             type="button"
             role="switch"
             :aria-checked="burnAfterRead"
-            @click="burnAfterRead = !burnAfterRead"
+            @click="toggleBurnAfterRead"
             :class="[
               'relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-surface',
               burnAfterRead ? 'bg-primary' : 'bg-border',
@@ -227,22 +308,22 @@ function handleCreateDrop() {
         </div>
 
         <div
-          class="p-3 rounded-lg border border-border bg-background space-y-2"
+          class="p-3.5 rounded-lg border border-border bg-background space-y-2.5"
         >
           <div class="flex items-center justify-between">
             <label
               for="remaining-views-input"
-              class="text-xs font-medium text-text-muted"
+              class="text-sm font-medium text-text-muted"
             >
               Remaining Views
             </label>
             <label
-              v-if="!burnAfterRead"
-              class="inline-flex items-center gap-1.5 cursor-pointer text-xs text-text-muted hover:text-text transition-colors select-none"
+              class="inline-flex items-center gap-2 cursor-pointer text-sm text-text-muted hover:text-text transition-colors select-none"
             >
               <input
                 type="checkbox"
-                v-model="isUnlimited"
+                :checked="isUnlimited"
+                @change="toggleUnlimited"
                 class="accent-white rounded cursor-pointer"
               />
               <span>Unlimited</span>
@@ -251,35 +332,26 @@ function handleCreateDrop() {
 
           <input
             id="remaining-views-input"
-            v-if="!isUnlimited || burnAfterRead"
-            :value="burnAfterRead ? 1 : customViews"
+            :type="isUnlimited ? 'text' : 'number'"
+            :value="displayViewsValue"
             @input="handleViewsInput"
-            :disabled="burnAfterRead"
-            type="number"
+            @blur="validateViews"
+            :disabled="isViewsInputDisabled"
             min="1"
             placeholder="Enter view count"
             :class="[
-              'w-full p-2.5 text-sm rounded-lg border border-border bg-surface text-text focus:outline-none transition-colors',
-              burnAfterRead
+              'w-full p-3 text-base rounded-lg border border-border bg-surface text-text focus:outline-none transition-colors',
+              isViewsInputDisabled
                 ? 'opacity-50 cursor-not-allowed text-text-muted'
                 : 'focus:border-text',
               viewsError ? 'border-danger focus:border-danger' : '',
             ]"
           />
-          <div
-            v-else
-            class="w-full p-2.5 text-sm rounded-lg border border-border bg-surface text-text-muted italic select-none"
-          >
-            Unlimited views allowed
-          </div>
 
-          <p v-if="burnAfterRead" class="text-xs text-text-subtle">
-            Drop will be deleted after the first view.
-          </p>
-          <p v-else-if="viewsError" class="text-xs text-danger">
+          <p v-if="viewsError" class="text-sm font-medium text-danger">
             {{ viewsError }}
           </p>
-          <p v-else-if="!isUnlimited" class="text-xs text-text-subtle">
+          <p class="text-sm text-text-muted">
             Enter the maximum number of times this drop can be viewed.
           </p>
         </div>
@@ -287,8 +359,9 @@ function handleCreateDrop() {
 
       <button
         type="button"
+        :disabled="!isFormValid"
         @click="handleCreateDrop"
-        class="w-full sm:w-auto px-5 py-2.5 bg-primary hover:bg-text text-primary-text font-medium rounded-lg transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-surface"
+        class="w-full sm:w-auto px-6 py-3 text-base font-semibold bg-primary hover:bg-text text-primary-text rounded-lg transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-surface disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-primary"
       >
         Create Drop
       </button>
