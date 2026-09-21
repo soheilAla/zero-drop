@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import CreateDrop from "./components/CreateDrop.vue";
+import { RouterView } from "vue-router";
 </script>
 
 <template>
   <main
     class="min-h-screen bg-background text-text flex items-center justify-center p-4"
   >
-    <CreateDrop />
+    <RouterView />
   </main>
 </template>

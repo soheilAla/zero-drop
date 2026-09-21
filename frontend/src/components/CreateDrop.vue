@@ -1,5 +1,8 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
+import { encryptContent } from "@/crypto/encryption";
+import { bytesToBase64Url } from "@/crypto/base64url";
+import { createDrop } from "@/api/drops";
 
 const MIN_EXPIRATION_SECONDS = 60;
 const MAX_EXPIRATION_SECONDS = 604800; // 7 days
@@ -13,6 +16,9 @@ const burnAfterRead = ref(false);
 const isUnlimited = ref(true);
 const customViews = ref<number | null>(5);
 const viewsError = ref("");
+
+const isLoading = ref(false);
+const submitError = ref("");
 
 const remainingViews = computed<number | null>(() => {
   if (burnAfterRead.value) {
@@ -66,6 +72,9 @@ const isFormValid = computed(() => {
 function handleInput() {
   if (errorMessage.value && secret.value.trim()) {
     errorMessage.value = "";
+  }
+  if (submitError.value) {
+    submitError.value = "";
   }
 }
 
@@ -146,7 +155,11 @@ function validateViews() {
   }
 }
 
-function handleCreateDrop() {
+async function handleCreateDrop() {
+  if (isLoading.value) {
+    return;
+  }
+
   let hasError = false;
 
   if (!secret.value.trim()) {
@@ -165,6 +178,35 @@ function handleCreateDrop() {
 
   if (hasError) {
     return;
+  }
+
+  submitError.value = "";
+  isLoading.value = true;
+
+  try {
+    const { ciphertext, iv, key } = await encryptContent(secret.value);
+
+    const response = await createDrop({
+      ciphertext: bytesToBase64Url(ciphertext),
+      content_iv: bytesToBase64Url(iv),
+      kdf_salt: null,
+      crypto_version: 1,
+      expiration_seconds: expirationSeconds.value,
+      remaining_views: remainingViews.value,
+    });
+
+    const keyBase64Url = bytesToBase64Url(key);
+    const dropUrl = `${window.location.origin}/drop/${response.id}#${keyBase64Url}`;
+
+    console.log("Drop URL:", dropUrl);
+  } catch (error: unknown) {
+    console.error("Failed to create drop:", error);
+    submitError.value =
+      error instanceof Error
+        ? error.message
+        : "Failed to create drop. Please try again.";
+  } finally {
+    isLoading.value = false;
   }
 }
 </script>
@@ -353,14 +395,20 @@ function handleCreateDrop() {
         </div>
       </div>
 
-      <button
-        type="button"
-        :disabled="!isFormValid"
-        @click="handleCreateDrop"
-        class="w-full sm:w-auto px-6 py-3 text-base font-semibold bg-primary hover:bg-text text-primary-text rounded-lg transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-surface disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-primary"
-      >
-        Create Drop
-      </button>
+      <div>
+        <button
+          type="button"
+          :disabled="!isFormValid || isLoading"
+          @click="handleCreateDrop"
+          class="w-full sm:w-auto px-6 py-3 text-base font-semibold bg-primary hover:bg-text text-primary-text rounded-lg transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-surface disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-primary"
+        >
+          {{ isLoading ? "Creating Drop..." : "Create Drop" }}
+        </button>
+
+        <p v-if="submitError" class="mt-2 text-sm font-medium text-danger">
+          {{ submitError }}
+        </p>
+      </div>
     </div>
   </section>
 </template>
