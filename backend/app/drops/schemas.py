@@ -8,7 +8,7 @@ class DropCreateRequest(BaseModel):
     content_iv: str
     kdf_salt: str | None = Field(default=None)
     crypto_version: int = Field(default=1, ge=1)
-    expiration_seconds: int = Field(ge=1)
+    expiration_seconds: int = Field(ge=60)
     remaining_views: int | None = Field(default=None, ge=1)
 
 

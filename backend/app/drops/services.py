@@ -98,7 +98,7 @@ async def get_drop(db: AsyncSession, drop_id: str) -> Drop | None:
 
 
 async def cleanup_expired_drops(db: AsyncSession) -> None:
-    stmt = delete(Drop).where(Drop.expires_at < datetime.now(UTC))
+    stmt = delete(Drop).where(Drop.expires_at <= datetime.now(UTC))
 
     await db.execute(stmt)
     await db.commit()
