@@ -9,7 +9,10 @@ router = APIRouter(prefix="/drops", tags=["drops"])
 
 
 @router.post(
-    "/", status_code=status.HTTP_201_CREATED, response_model=DropCreateResponse
+    "/",
+    status_code=status.HTTP_201_CREATED,
+    response_model=DropCreateResponse,
+    description="Store an encrypted drop with an expiration time and optional view limit.",
 )
 async def create_drop_router(
     data: DropCreateRequest, db: AsyncSession = Depends(get_db)
@@ -21,7 +24,11 @@ async def create_drop_router(
     )
 
 
-@router.get("/{drop_id}", response_model=DropResponse)
+@router.get(
+    "/{drop_id}",
+    response_model=DropResponse,
+    description="Retrieve a drop and consume one available view.",
+)
 async def get_drop_router(drop_id: str, db: AsyncSession = Depends(get_db)):
     drop = await get_drop(db, drop_id)
 

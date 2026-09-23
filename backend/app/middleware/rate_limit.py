@@ -41,8 +41,9 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
     async def dispatch(
         self, request: Request, call_next: RequestResponseEndpoint
     ) -> Response:
+        key = request.client.host
 
-        if not rate_limiter.is_allowed:
+        if not rate_limiter.is_allowed(key):
             return JSONResponse(
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,
                 content={
@@ -50,4 +51,4 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                 },
             )
 
-        return await super().dispatch(request, call_next)
+        return await call_next(request)
