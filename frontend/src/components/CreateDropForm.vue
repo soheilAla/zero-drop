@@ -3,6 +3,7 @@ import { computed, ref } from "vue";
 import {
   encryptContent,
   encryptContentWithPassword,
+  hashConsumeToken,
 } from "@/crypto/encryption";
 import { bytesToBase64Url } from "@/crypto/base64url";
 import { createDrop } from "@/api/drops";
@@ -12,6 +13,7 @@ export interface CreatedDropPayload {
   expiresAt: string;
   remainingViews: number | null;
   burnAfterRead: boolean;
+  isPasswordProtected: boolean;
 }
 
 const emit = defineEmits<{
@@ -205,6 +207,7 @@ async function handleCreateDrop() {
     let ivBytes: Uint8Array;
     let saltBase64Url: string | null = null;
     let dropUrlFragment = "";
+    let consumeToken: Uint8Array;
 
     if (password.value) {
       const encrypted = await encryptContentWithPassword(
@@ -214,17 +217,22 @@ async function handleCreateDrop() {
       ciphertextBytes = encrypted.ciphertext;
       ivBytes = encrypted.iv;
       saltBase64Url = bytesToBase64Url(encrypted.salt);
+      consumeToken = encrypted.consumeToken;
     } else {
       const encrypted = await encryptContent(secret.value);
       ciphertextBytes = encrypted.ciphertext;
       ivBytes = encrypted.iv;
       dropUrlFragment = `#${bytesToBase64Url(encrypted.key)}`;
+      consumeToken = encrypted.consumeToken;
     }
+
+    const consumeTokenHash = await hashConsumeToken(consumeToken);
 
     const response = await createDrop({
       ciphertext: bytesToBase64Url(ciphertextBytes),
       content_iv: bytesToBase64Url(ivBytes),
       kdf_salt: saltBase64Url,
+      consume_token_hash: bytesToBase64Url(new Uint8Array(consumeTokenHash)),
       crypto_version: 1,
       expiration_seconds: expirationSeconds.value,
       remaining_views: remainingViews.value,
@@ -237,6 +245,7 @@ async function handleCreateDrop() {
       expiresAt: response.expires_at,
       remainingViews: response.remaining_views,
       burnAfterRead: wasBurnAfterRead,
+      isPasswordProtected: Boolean(password.value),
     });
   } catch (error: unknown) {
     console.error("Failed to create drop:", error);

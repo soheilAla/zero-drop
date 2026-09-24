@@ -26,6 +26,7 @@ function handleCreateAnother() {
       :expires-at="createdDrop.expiresAt"
       :remaining-views="createdDrop.remainingViews"
       :burn-after-read="createdDrop.burnAfterRead"
+      :is-password-protected="createdDrop.isPasswordProtected"
       @create-another="handleCreateAnother"
     />
     <CreateDropForm v-else @created="handleDropCreated" />

@@ -2,8 +2,13 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
-from app.drops.schemas import DropCreateRequest, DropCreateResponse, DropResponse
-from app.drops.services import create_drop, encode_base64url, get_drop
+from app.drops.schemas import (
+    DropConsumeRequest,
+    DropCreateRequest,
+    DropCreateResponse,
+    DropResponse,
+)
+from app.drops.services import consume_drop, create_drop, encode_base64url, get_drop
 
 router = APIRouter(prefix="/drops", tags=["drops"])
 
@@ -27,7 +32,7 @@ async def create_drop_router(
 @router.get(
     "/{drop_id}",
     response_model=DropResponse,
-    description="Retrieve a drop and consume one available view.",
+    description="Retrieve an active drop without consuming a view.",
 )
 async def get_drop_router(drop_id: str, db: AsyncSession = Depends(get_db)):
     drop = await get_drop(db, drop_id)
@@ -46,3 +51,19 @@ async def get_drop_router(drop_id: str, db: AsyncSession = Depends(get_db)):
         expires_at=drop.expires_at,
         remaining_views=drop.remaining_views,
     )
+
+
+@router.post(
+    "/{drop_id}/consume",
+    status_code=status.HTTP_204_NO_CONTENT,
+    description="Consume one view of a drop after successful decryption.",
+)
+async def consume_drop_router(
+    drop_id: str, data: DropConsumeRequest, db: AsyncSession = Depends(get_db)
+):
+    drop = await consume_drop(db, drop_id, data.consume_token)
+
+    if not drop:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Drop not found"
+        )

@@ -1,9 +1,10 @@
 import base64
 import binascii
+import hashlib
 import secrets
 from datetime import UTC, datetime, timedelta
 
-from sqlalchemy import case, delete, or_, update
+from sqlalchemy import case, delete, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
@@ -19,7 +20,7 @@ def encode_base64url(value: bytes) -> str:
 def decode_base64url(value: str) -> bytes:
     try:
         return base64.urlsafe_b64decode(value + "=" * (-len(value) % 4))
-    except (ValueError, binascii.Error):
+    except ValueError, binascii.Error:
         raise DropValidationError("Invalid Base64 URL")
 
 
@@ -27,6 +28,10 @@ async def create_drop(db: AsyncSession, data: DropCreateRequest) -> Drop:
     ciphertext = decode_base64url(data.ciphertext)
     content_iv = decode_base64url(data.content_iv)
     kdf_salt = decode_base64url(data.kdf_salt) if data.kdf_salt else None
+    consume_token_hash = decode_base64url(data.consume_token_hash)
+
+    if len(consume_token_hash) != 32:
+        raise DropValidationError("Invalid consume token")
 
     if len(ciphertext) == 0:
         raise DropValidationError("Drop cannot be empty")
@@ -56,6 +61,7 @@ async def create_drop(db: AsyncSession, data: DropCreateRequest) -> Drop:
         ciphertext=ciphertext,
         content_iv=content_iv,
         kdf_salt=kdf_salt,
+        consume_token_hash=consume_token_hash,
         crypto_version=data.crypto_version,
         expires_at=expires_at,
         remaining_views=data.remaining_views,
@@ -70,10 +76,26 @@ async def create_drop(db: AsyncSession, data: DropCreateRequest) -> Drop:
 
 
 async def get_drop(db: AsyncSession, drop_id: str) -> Drop | None:
+    stmt = select(Drop).where(
+        Drop.id == drop_id,
+        Drop.expires_at > datetime.now(UTC),
+        or_(Drop.remaining_views.is_(None), Drop.remaining_views > 0),
+    )
+
+    return await db.scalar(stmt)
+
+
+async def consume_drop(
+    db: AsyncSession, drop_id: str, consume_token: str
+) -> Drop | None:
+    token = decode_base64url(consume_token)
+    consume_token_hash = hashlib.sha256(token).digest()
+
     stmt = (
         update(Drop)
         .where(
             Drop.id == drop_id,
+            Drop.consume_token_hash == consume_token_hash,
             Drop.expires_at > datetime.now(UTC),
             or_(Drop.remaining_views.is_(None), Drop.remaining_views > 0),
         )
