@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
-import { encryptContent } from "@/crypto/encryption";
+import {
+  encryptContent,
+  encryptContentWithPassword,
+} from "@/crypto/encryption";
 import { bytesToBase64Url } from "@/crypto/base64url";
 import { createDrop } from "@/api/drops";
 
@@ -27,6 +30,8 @@ const burnAfterRead = ref(false);
 const isUnlimited = ref(true);
 const customViews = ref<number | null>(5);
 const viewsError = ref("");
+
+const password = ref("");
 
 const isLoading = ref(false);
 const submitError = ref("");
@@ -196,19 +201,36 @@ async function handleCreateDrop() {
 
   try {
     const wasBurnAfterRead = burnAfterRead.value;
-    const { ciphertext, iv, key } = await encryptContent(secret.value);
+    let ciphertextBytes: Uint8Array;
+    let ivBytes: Uint8Array;
+    let saltBase64Url: string | null = null;
+    let dropUrlFragment = "";
+
+    if (password.value) {
+      const encrypted = await encryptContentWithPassword(
+        secret.value,
+        password.value,
+      );
+      ciphertextBytes = encrypted.ciphertext;
+      ivBytes = encrypted.iv;
+      saltBase64Url = bytesToBase64Url(encrypted.salt);
+    } else {
+      const encrypted = await encryptContent(secret.value);
+      ciphertextBytes = encrypted.ciphertext;
+      ivBytes = encrypted.iv;
+      dropUrlFragment = `#${bytesToBase64Url(encrypted.key)}`;
+    }
 
     const response = await createDrop({
-      ciphertext: bytesToBase64Url(ciphertext),
-      content_iv: bytesToBase64Url(iv),
-      kdf_salt: null,
+      ciphertext: bytesToBase64Url(ciphertextBytes),
+      content_iv: bytesToBase64Url(ivBytes),
+      kdf_salt: saltBase64Url,
       crypto_version: 1,
       expiration_seconds: expirationSeconds.value,
       remaining_views: remainingViews.value,
     });
 
-    const keyBase64Url = bytesToBase64Url(key);
-    const dropUrl = `${window.location.origin}/drop/${response.id}#${keyBase64Url}`;
+    const dropUrl = `${window.location.origin}/drop/${response.id}${dropUrlFragment}`;
 
     emit("created", {
       dropUrl,
@@ -236,10 +258,7 @@ async function handleCreateDrop() {
 
     <div class="space-y-5">
       <div>
-        <label
-          for="secret"
-          class="block text-base font-medium text-text mb-2"
-        >
+        <label for="secret" class="block text-base font-medium text-text mb-2">
           Secret Message
         </label>
         <textarea
@@ -411,6 +430,25 @@ async function handleCreateDrop() {
             Enter the maximum number of times this drop can be viewed.
           </p>
         </div>
+      </div>
+
+      <div>
+        <div class="flex items-center justify-between mb-2">
+          <label for="password" class="block text-base font-medium text-text">
+            Password
+          </label>
+        </div>
+        <input
+          id="password"
+          v-model="password"
+          type="password"
+          autocomplete="new-password"
+          placeholder="Enter password (optional)"
+          class="w-full p-3.5 text-base rounded-lg border border-border bg-background text-text placeholder-text-subtle focus:outline-none focus:border-text transition-colors"
+        />
+        <p class="mt-2 text-sm text-text-muted">
+          The password is never sent to the server.
+        </p>
       </div>
 
       <div>
