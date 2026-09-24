@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { onMounted, ref } from "vue";
 import { RouterLink, useRoute } from "vue-router";
-import { getDrop, type DropResponse } from "@/api/drops";
-import { base64UrlToBytes } from "@/crypto/base64url";
+import { consumeDrop, getDrop, type DropResponse } from "@/api/drops";
+import { base64UrlToBytes, bytesToBase64Url } from "@/crypto/base64url";
 import {
   decryptContent,
   decryptContentWithPassword,
@@ -105,14 +105,24 @@ async function loadAndDecryptDrop() {
   try {
     const ciphertextBytes = base64UrlToBytes(drop.value.ciphertext);
     const ivBytes = base64UrlToBytes(drop.value.content_iv);
-    decryptedSecret.value = await decryptContent(
+    const { plaintext, consumeToken } = await decryptContent(
       ciphertextBytes,
       ivBytes,
       keyBytes,
     );
-  } catch {
-    errorMessage.value =
-      "Decryption failed. The key may be invalid or the data corrupted.";
+    await consumeDrop(drop.value.id, bytesToBase64Url(consumeToken));
+    decryptedSecret.value = plaintext;
+  } catch (err: unknown) {
+    if (
+      err instanceof Error &&
+      err.message.toLowerCase().includes("not found")
+    ) {
+      errorMessage.value =
+        "Drop not found or it has already expired / been consumed.";
+    } else {
+      errorMessage.value =
+        "Decryption failed. The key may be invalid or the data corrupted.";
+    }
     isLoading.value = false;
     return;
   }
@@ -138,12 +148,23 @@ async function handleUnlock() {
     const ivBytes = base64UrlToBytes(drop.value.content_iv);
     const saltBytes = base64UrlToBytes(drop.value.kdf_salt);
 
-    decryptedSecret.value = await decryptContentWithPassword(
+    const { plaintext, consumeToken } = await decryptContentWithPassword(
       ciphertextBytes,
       ivBytes,
       password.value,
       saltBytes,
     );
+
+    try {
+      await consumeDrop(drop.value.id, bytesToBase64Url(consumeToken));
+    } catch {
+      drop.value = null;
+      errorMessage.value =
+        "Drop not found or it has already expired / been consumed.";
+      return;
+    }
+
+    decryptedSecret.value = plaintext;
   } catch {
     errorMessage.value = "Invalid password.";
   } finally {

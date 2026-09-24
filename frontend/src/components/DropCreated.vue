@@ -6,6 +6,7 @@ interface Props {
   expiresAt: string;
   remainingViews: number | null;
   burnAfterRead: boolean;
+  isPasswordProtected?: boolean;
 }
 
 const props = defineProps<Props>();
@@ -87,7 +88,11 @@ async function handleCopyLink() {
       <h1 class="text-2xl sm:text-3xl font-bold text-text mb-2">
         Your drop is ready!
       </h1>
-      <p class="text-sm text-text-muted">
+      <p v-if="isPasswordProtected" class="text-sm text-text-muted">
+        The password is not included in the link and was never sent to the
+        server. Share the password separately with the recipient.
+      </p>
+      <p v-else class="text-sm text-text-muted">
         Share this link with your recipient. The decryption key is included in
         the link and was never sent to the server.
       </p>

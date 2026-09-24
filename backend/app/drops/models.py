@@ -17,6 +17,8 @@ class Drop(Base):
 
     kdf_salt: Mapped[bytes | None] = mapped_column(LargeBinary, nullable=True)
 
+    consume_token_hash: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
+
     crypto_version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
 
     created_at: Mapped[datetime] = mapped_column(
