@@ -11,6 +11,7 @@ export default defineConfig({
     },
   },
   server: {
+    allowedHosts: [".trycloudflare.com"],
     proxy: {
       "/drops": {
         target: "http://localhost:8000",

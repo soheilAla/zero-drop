@@ -33,6 +33,36 @@ const isUnlimited = ref(true);
 const customViews = ref<number | null>(5);
 const viewsError = ref("");
 
+type ViewMode = "burn" | "limited" | "unlimited";
+const viewMode = computed<ViewMode>({
+  get() {
+    if (burnAfterRead.value) return "burn";
+    if (isUnlimited.value) return "unlimited";
+    return "limited";
+  },
+  set(mode: ViewMode) {
+    if (mode === "burn") {
+      burnAfterRead.value = true;
+      isUnlimited.value = false;
+    } else if (mode === "unlimited") {
+      burnAfterRead.value = false;
+      isUnlimited.value = true;
+    } else {
+      burnAfterRead.value = false;
+      isUnlimited.value = false;
+      if (!customViews.value || customViews.value < 1) {
+        customViews.value = 5;
+      }
+    }
+    viewsError.value = "";
+  },
+});
+
+function selectViewMode(mode: ViewMode) {
+  viewMode.value = mode;
+  validateViews();
+}
+
 const password = ref("");
 
 const isLoading = ref(false);
@@ -48,20 +78,6 @@ const remainingViews = computed<number | null>(() => {
   return customViews.value && customViews.value >= 1
     ? Math.floor(customViews.value)
     : null;
-});
-
-const isViewsInputDisabled = computed(
-  () => burnAfterRead.value || isUnlimited.value,
-);
-
-const displayViewsValue = computed(() => {
-  if (burnAfterRead.value) {
-    return "1";
-  }
-  if (isUnlimited.value) {
-    return "Unlimited";
-  }
-  return customViews.value ?? "";
 });
 
 const errorMessage = ref("");
@@ -121,32 +137,6 @@ function validateDuration() {
     durationError.value = "";
     return true;
   }
-}
-
-function toggleBurnAfterRead() {
-  burnAfterRead.value = !burnAfterRead.value;
-  if (burnAfterRead.value) {
-    isUnlimited.value = false;
-  } else {
-    isUnlimited.value = false;
-    if (!customViews.value || customViews.value < 1) {
-      customViews.value = 5;
-    }
-  }
-  viewsError.value = "";
-}
-
-function toggleUnlimited() {
-  if (!isUnlimited.value) {
-    isUnlimited.value = true;
-    burnAfterRead.value = false;
-  } else {
-    isUnlimited.value = false;
-    if (!customViews.value || customViews.value < 1) {
-      customViews.value = 5;
-    }
-  }
-  viewsError.value = "";
 }
 
 function handleViewsInput(event: Event) {
@@ -260,44 +250,84 @@ async function handleCreateDrop() {
 </script>
 
 <template>
-  <div>
-    <h1 class="text-2xl sm:text-3xl font-bold text-text mb-6">
-      Create a secure drop
-    </h1>
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 xl:gap-14">
+    <!-- Title & Textarea -->
+    <div class="flex flex-col space-y-6">
+      <div class="space-y-3">
+        <div class="flex items-center gap-3 select-none">
+          <div class="w-9 h-9 sm:w-10 sm:h-10 text-text shrink-0">
+            <svg
+              viewBox="0 0 48 48"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+              class="w-full h-full"
+            >
+              <path
+                fill-rule="evenodd"
+                clip-rule="evenodd"
+                d="M24 5C24 5 10 18.2 10 28.5C10 36.232 16.268 42.5 24 42.5C31.732 42.5 38 36.232 38 28.5C38 18.2 24 5 24 5ZM24 21C20.686 21 18 24.358 18 28.5C18 32.642 20.686 36 24 36C27.314 36 30 32.642 30 28.5C30 24.358 27.314 21 24 21Z"
+                fill="currentColor"
+              />
+            </svg>
+          </div>
+          <span
+            class="font-heading text-xl sm:text-2xl font-semibold tracking-wider text-text uppercase translate-y-0.5"
+          >
+            ZERO DROP
+          </span>
+        </div>
 
-    <div class="space-y-5">
-      <div>
-        <label for="secret" class="block text-base font-medium text-text mb-2">
-          Secret Message
+        <div>
+          <h1
+            class="font-heading text-2xl sm:text-3xl font-semibold text-text tracking-tight"
+          >
+            Create a secure drop
+          </h1>
+          <p class="text-base text-text-muted mt-1.5 leading-relaxed">
+            Encrypted in your browser. The decryption key and the password never
+            reaches the server.
+          </p>
+        </div>
+      </div>
+
+      <div class="flex-1 flex flex-col">
+        <label
+          for="secret"
+          class="block font-heading text-base font-semibold text-text mb-2.5"
+        >
+          Secret message
         </label>
         <textarea
           id="secret"
           v-model="secret"
           @input="handleInput"
-          rows="6"
           placeholder="Enter your sensitive text here..."
           :class="[
-            'w-full p-3.5 text-base leading-relaxed rounded-lg bg-background text-text placeholder-text-subtle focus:outline-none transition-colors resize-y border',
+            'w-full flex-1 min-h-[260px] lg:min-h-[330px] p-4 text-base leading-relaxed rounded-xl bg-background text-text placeholder-text-subtle focus:outline-none transition-colors resize-none border',
             errorMessage
               ? 'border-danger focus:border-danger'
               : 'border-border focus:border-text',
           ]"
         ></textarea>
-        <p v-if="errorMessage" class="mt-2 text-sm font-medium text-danger">
+        <p v-if="errorMessage" class="mt-1.5 text-sm text-danger font-medium">
           {{ errorMessage }}
         </p>
       </div>
+    </div>
 
-      <!-- Expiration Duration -->
+    <!-- Limitations & Password -->
+    <div class="flex flex-col space-y-7">
       <div>
-        <label class="block text-base font-medium text-text mb-2">
-          Expiration Duration
+        <label
+          class="block font-heading text-base font-semibold text-text mb-2.5"
+        >
+          Expiration
         </label>
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div class="grid grid-cols-3 gap-3.5">
           <div>
             <label
               for="duration-days"
-              class="block text-sm font-medium text-text-muted mb-1.5"
+              class="block text-sm font-medium text-text-muted tracking-wide mb-1.5"
             >
               Days
             </label>
@@ -307,15 +337,16 @@ async function handleCreateDrop() {
               @blur="validateDuration"
               type="number"
               min="0"
+              max="7"
               step="1"
-              class="w-full p-2.5 text-base rounded-lg border border-border bg-background text-text focus:outline-none focus:border-text transition-colors text-center"
+              class="w-full h-12 text-base font-medium rounded-xl border border-border bg-background text-text focus:outline-none focus:border-text transition-colors text-center"
             />
           </div>
 
           <div>
             <label
               for="duration-hours"
-              class="block text-sm font-medium text-text-muted mb-1.5"
+              class="block text-sm font-medium text-text-muted tracking-wide mb-1.5"
             >
               Hours
             </label>
@@ -325,15 +356,16 @@ async function handleCreateDrop() {
               @blur="validateDuration"
               type="number"
               min="0"
+              max="23"
               step="1"
-              class="w-full p-2.5 text-base rounded-lg border border-border bg-background text-text focus:outline-none focus:border-text transition-colors text-center"
+              class="w-full h-12 text-base font-medium rounded-xl border border-border bg-background text-text focus:outline-none focus:border-text transition-colors text-center"
             />
           </div>
 
           <div>
             <label
               for="duration-minutes"
-              class="block text-sm font-medium text-text-muted mb-1.5"
+              class="block text-sm font-medium text-text-muted tracking-wide mb-1.5"
             >
               Minutes
             </label>
@@ -343,134 +375,188 @@ async function handleCreateDrop() {
               @blur="validateDuration"
               type="number"
               min="0"
+              max="59"
               step="1"
-              class="w-full p-2.5 text-base rounded-lg border border-border bg-background text-text focus:outline-none focus:border-text transition-colors text-center"
+              class="w-full h-12 text-base font-medium rounded-xl border border-border bg-background text-text focus:outline-none focus:border-text transition-colors text-center"
             />
           </div>
         </div>
-        <p v-if="durationError" class="mt-2 text-sm font-medium text-danger">
+        <p v-if="durationError" class="mt-1.5 text-sm text-danger font-medium">
           {{ durationError }}
         </p>
       </div>
 
       <!-- Views Limit -->
-      <div class="space-y-3">
-        <label class="block text-base font-medium text-text">
-          Views Limit
+      <div>
+        <label
+          class="block font-heading text-base font-semibold text-text mb-2.5"
+        >
+          Views limit
         </label>
 
         <div
-          class="flex items-center justify-between p-3.5 rounded-lg border border-border bg-background"
+          class="rounded-xl border border-border bg-background divide-y divide-border overflow-hidden"
         >
-          <div class="pr-4">
-            <span class="block text-base font-medium text-text">
-              Burn after read
-            </span>
-            <span class="block text-sm text-text-muted mt-0.5">
-              Drop will be permanently deleted after the first view
-            </span>
-          </div>
-          <button
-            type="button"
-            role="switch"
-            :aria-checked="burnAfterRead"
-            @click="toggleBurnAfterRead"
+          <div
+            role="button"
+            tabindex="0"
+            @click="selectViewMode('burn')"
+            @keydown.enter.space.prevent="selectViewMode('burn')"
             :class="[
-              'relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-surface',
-              burnAfterRead ? 'bg-primary' : 'bg-border',
+              'w-full h-[56px] px-4 flex items-center justify-between text-left transition-colors cursor-pointer select-none',
+              viewMode === 'burn'
+                ? 'bg-surface-hover/70 text-text'
+                : 'text-text-muted hover:text-text hover:bg-surface/50',
             ]"
           >
-            <span
-              :class="[
-                'pointer-events-none inline-block h-5 w-5 rounded-full shadow transform ring-0 transition duration-200 ease-in-out',
-                burnAfterRead
-                  ? 'translate-x-5 bg-primary-text'
-                  : 'translate-x-0 bg-text-muted',
-              ]"
-            />
-          </button>
-        </div>
-
-        <div
-          class="p-3.5 rounded-lg border border-border bg-background space-y-2.5"
-        >
-          <div class="flex items-center justify-between">
-            <label
-              for="remaining-views-input"
-              class="text-sm font-medium text-text-muted"
-            >
-              Remaining Views
-            </label>
-            <label
-              class="inline-flex items-center gap-2 cursor-pointer text-sm text-text-muted hover:text-text transition-colors select-none"
-            >
-              <input
-                type="checkbox"
-                :checked="isUnlimited"
-                @change="toggleUnlimited"
-                class="accent-white rounded cursor-pointer"
-              />
-              <span>Unlimited</span>
-            </label>
+            <div class="flex items-center">
+              <span
+                :class="[
+                  'w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors',
+                  viewMode === 'burn'
+                    ? 'border-text bg-text'
+                    : 'border-border bg-transparent',
+                ]"
+              >
+                <span
+                  v-if="viewMode === 'burn'"
+                  class="w-1.5 h-1.5 rounded-full bg-background"
+                />
+              </span>
+              <span
+                class="font-heading text-base font-semibold text-text ml-3.5"
+              >
+                Burn after read
+              </span>
+            </div>
+            <div class="w-32 flex items-center justify-end text-right">
+              <span class="text-sm text-text-muted">1 view only</span>
+            </div>
           </div>
 
-          <input
-            id="remaining-views-input"
-            :type="isUnlimited ? 'text' : 'number'"
-            :value="displayViewsValue"
-            @input="handleViewsInput"
-            @blur="validateViews"
-            :disabled="isViewsInputDisabled"
-            min="1"
-            placeholder="Enter view count"
+          <div
+            role="button"
+            tabindex="0"
+            @click="selectViewMode('limited')"
+            @keydown.enter.space.prevent="selectViewMode('limited')"
             :class="[
-              'w-full p-3 text-base rounded-lg border border-border bg-surface text-text focus:outline-none transition-colors',
-              isViewsInputDisabled
-                ? 'opacity-50 cursor-not-allowed text-text-muted'
-                : 'focus:border-text',
-              viewsError ? 'border-danger focus:border-danger' : '',
+              'w-full h-[56px] px-4 flex items-center justify-between text-left transition-colors cursor-pointer select-none',
+              viewMode === 'limited'
+                ? 'bg-surface-hover/70 text-text'
+                : 'text-text-muted hover:text-text hover:bg-surface/50',
             ]"
-          />
+          >
+            <div class="flex items-center">
+              <span
+                :class="[
+                  'w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors',
+                  viewMode === 'limited'
+                    ? 'border-text bg-text'
+                    : 'border-border bg-transparent',
+                ]"
+              >
+                <span
+                  v-if="viewMode === 'limited'"
+                  class="w-1.5 h-1.5 rounded-full bg-background"
+                />
+              </span>
+              <span
+                class="font-heading text-base font-semibold text-text ml-3.5"
+                >Limited</span
+              >
+            </div>
 
-          <p v-if="viewsError" class="text-sm font-medium text-danger">
-            {{ viewsError }}
-          </p>
-          <p class="text-sm text-text-muted">
-            Enter the maximum number of times this drop can be viewed.
-          </p>
+            <div
+              class="w-32 flex items-center justify-end text-right gap-1.5"
+              @click.stop
+            >
+              <template v-if="viewMode === 'limited'">
+                <input
+                  id="remaining-views-input"
+                  v-model.number="customViews"
+                  @input="handleViewsInput"
+                  @blur="validateViews"
+                  type="number"
+                  min="1"
+                  placeholder="5"
+                  class="w-16 h-8 text-sm font-medium text-center rounded-lg border border-border bg-surface text-text focus:outline-none focus:border-text transition-colors"
+                />
+                <span class="text-sm text-text-muted">views</span>
+              </template>
+            </div>
+          </div>
+
+          <div
+            role="button"
+            tabindex="0"
+            @click="selectViewMode('unlimited')"
+            @keydown.enter.space.prevent="selectViewMode('unlimited')"
+            :class="[
+              'w-full h-[56px] px-4 flex items-center justify-between text-left transition-colors cursor-pointer select-none',
+              viewMode === 'unlimited'
+                ? 'bg-surface-hover/70 text-text'
+                : 'text-text-muted hover:text-text hover:bg-surface/50',
+            ]"
+          >
+            <div class="flex items-center">
+              <span
+                :class="[
+                  'w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors',
+                  viewMode === 'unlimited'
+                    ? 'border-text bg-text'
+                    : 'border-border bg-transparent',
+                ]"
+              >
+                <span
+                  v-if="viewMode === 'unlimited'"
+                  class="w-1.5 h-1.5 rounded-full bg-background"
+                />
+              </span>
+              <span
+                class="font-heading text-base font-semibold text-text ml-3.5"
+                >Unlimited</span
+              >
+            </div>
+          </div>
         </div>
+
+        <p v-if="viewsError" class="mt-1.5 text-sm text-danger font-medium">
+          {{ viewsError }}
+        </p>
       </div>
 
+      <!-- Password -->
       <div>
-        <div class="flex items-center justify-between mb-2">
-          <label for="password" class="block text-base font-medium text-text">
+        <div class="flex items-center justify-between mb-2.5">
+          <label
+            for="password"
+            class="block font-heading text-base font-semibold text-text"
+          >
             Password
           </label>
+          <span class="text-sm text-text-muted font-normal">Optional</span>
         </div>
         <input
           id="password"
           v-model="password"
           type="password"
           autocomplete="new-password"
-          placeholder="Enter password (optional)"
-          class="w-full p-3.5 text-base rounded-lg border border-border bg-background text-text placeholder-text-subtle focus:outline-none focus:border-text transition-colors"
+          placeholder="Optional password"
+          class="w-full h-12 px-4 text-base rounded-xl border border-border bg-background text-text placeholder-text-subtle focus:outline-none focus:border-text transition-colors"
         />
-        <p class="mt-2 text-sm text-text-muted">
-          The password is never sent to the server.
-        </p>
       </div>
 
-      <div>
+      <div class="pt-2">
         <button
           type="button"
           :disabled="!isFormValid || isLoading"
           @click="handleCreateDrop"
-          class="w-full sm:w-auto px-6 py-3 text-base font-semibold bg-primary hover:bg-text text-primary-text rounded-lg transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-surface disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-primary"
+          class="w-full h-12 px-6 font-heading text-base font-semibold bg-primary hover:bg-neutral-200 text-primary-text rounded-xl transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-surface disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-primary shadow-sm"
         >
-          {{ isLoading ? "Creating Drop..." : "Create Drop" }}
+          {{ isLoading ? "Creating drop..." : "Create drop" }}
         </button>
 
-        <p v-if="submitError" class="mt-2 text-sm font-medium text-danger">
+        <p v-if="submitError" class="mt-2 text-sm text-danger font-medium">
           {{ submitError }}
         </p>
       </div>

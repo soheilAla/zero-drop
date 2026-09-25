@@ -14,7 +14,7 @@ router = APIRouter(prefix="/drops", tags=["drops"])
 
 
 @router.post(
-    "/",
+    "",
     status_code=status.HTTP_201_CREATED,
     response_model=DropCreateResponse,
     description="Store an encrypted drop with an expiration time and optional view limit.",

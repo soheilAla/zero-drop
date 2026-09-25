@@ -179,9 +179,11 @@ onMounted(() => {
 
 <template>
   <section
-    class="w-full max-w-xl p-6 sm:p-8 bg-surface rounded-xl border border-border"
+    class="w-full max-w-xl p-6 sm:p-8 bg-surface rounded-3xl border border-border"
   >
-    <h1 class="text-2xl sm:text-3xl font-bold text-text mb-6">Secure Drop</h1>
+    <h1 class="font-heading text-2xl sm:text-3xl font-semibold text-text mb-6">
+      Secure drop
+    </h1>
 
     <div v-if="isLoading && !drop" class="py-10 text-center space-y-3">
       <p class="text-base text-text-muted">Fetching and decrypting drop...</p>
@@ -189,7 +191,7 @@ onMounted(() => {
 
     <div v-else-if="errorMessage && !drop?.kdf_salt" class="space-y-5">
       <div
-        class="p-4 rounded-lg bg-background border border-danger/40 text-danger"
+        class="p-4 rounded-xl bg-background border border-danger/40 text-danger"
       >
         <p class="text-sm font-medium">
           {{ errorMessage }}
@@ -199,7 +201,7 @@ onMounted(() => {
       <div class="pt-2">
         <RouterLink
           to="/"
-          class="inline-block px-5 py-2.5 text-sm font-semibold bg-surface hover:bg-surface-hover text-text rounded-lg border border-border transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-surface"
+          class="inline-block px-6 py-3 font-heading text-base font-semibold bg-primary hover:bg-neutral-200 text-primary-text rounded-xl transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-surface shadow-sm"
         >
           Create a new drop
         </RouterLink>
@@ -210,7 +212,7 @@ onMounted(() => {
       <div>
         <label
           for="password"
-          class="block text-base font-medium text-text mb-2"
+          class="block font-heading text-base font-semibold text-text mb-2"
         >
           Password
         </label>
@@ -223,7 +225,7 @@ onMounted(() => {
           @input="errorMessage = ''"
           @keydown.enter="handleUnlock"
           :class="[
-            'w-full p-3.5 text-base rounded-lg border bg-background text-text focus:outline-none transition-colors',
+            'w-full p-3.5 text-base rounded-xl border bg-background text-text focus:outline-none transition-colors',
             errorMessage
               ? 'border-danger focus:border-danger'
               : 'border-border focus:border-text',
@@ -239,7 +241,7 @@ onMounted(() => {
           type="button"
           :disabled="isLoading"
           @click="handleUnlock"
-          class="w-full sm:w-auto px-6 py-3 text-base font-semibold bg-primary hover:bg-text text-primary-text rounded-lg transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-surface disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-primary"
+          class="w-full sm:w-auto px-6 py-3 font-heading text-base font-semibold bg-primary hover:bg-text text-primary-text rounded-xl transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-surface disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-primary"
         >
           {{ isLoading ? "Unlocking..." : "Unlock" }}
         </button>
@@ -251,16 +253,41 @@ onMounted(() => {
         <div class="flex items-center justify-between mb-2">
           <label
             for="decrypted-secret"
-            class="block text-base font-medium text-text"
+            class="block font-heading text-base font-semibold text-text"
           >
-            Secret Message
+            Secret message
           </label>
           <button
             type="button"
             @click="handleCopySecret"
-            class="text-sm font-medium text-text-muted hover:text-text transition-colors cursor-pointer"
+            class="font-heading text-sm font-semibold text-text-muted hover:text-text transition-colors cursor-pointer inline-flex items-center gap-1.5"
           >
-            {{ isCopied ? "Copied!" : "Copy secret" }}
+            <svg
+              v-if="isCopied"
+              viewBox="0 0 20 20"
+              fill="currentColor"
+              class="w-3.5 h-3.5 shrink-0"
+              aria-hidden="true"
+            >
+              <path
+                fill-rule="evenodd"
+                clip-rule="evenodd"
+                d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+              />
+            </svg>
+            <svg
+              v-else
+              viewBox="0 0 20 20"
+              fill="currentColor"
+              class="w-3.5 h-3.5 shrink-0"
+              aria-hidden="true"
+            >
+              <path
+                d="M7 9a2 2 0 012-2h6a2 2 0 012 2v6a2 2 0 01-2 2H9a2 2 0 01-2-2V9z"
+              />
+              <path d="M5 3a2 2 0 00-2 2v6a2 2 0 002 2V5h8a2 2 0 00-2-2H5z" />
+            </svg>
+            <span>{{ isCopied ? "Copied!" : "Copy" }}</span>
           </button>
         </div>
         <textarea
@@ -268,16 +295,16 @@ onMounted(() => {
           readonly
           rows="6"
           :value="decryptedSecret"
-          class="w-full p-3.5 text-base leading-relaxed rounded-lg bg-background text-text border border-border focus:outline-none select-all resize-y"
+          class="w-full p-3.5 text-base leading-relaxed rounded-xl bg-background text-text border border-border focus:outline-none select-all resize-none"
         ></textarea>
       </div>
 
       <div class="pt-2">
         <RouterLink
           to="/"
-          class="inline-block px-6 py-3 text-base font-semibold bg-primary hover:bg-text text-primary-text rounded-lg transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-surface"
+          class="inline-block px-6 py-3 font-heading text-base font-semibold bg-primary hover:bg-neutral-200 text-primary-text rounded-xl transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-surface shadow-sm"
         >
-          Create your own drop
+          Create a new drop
         </RouterLink>
       </div>
     </div>

@@ -85,22 +85,30 @@ async function handleCopyLink() {
 <template>
   <div class="space-y-6">
     <div>
-      <h1 class="text-2xl sm:text-3xl font-bold text-text mb-2">
+      <h1
+        class="font-heading text-2xl sm:text-3xl font-semibold text-text mb-2"
+      >
         Your drop is ready!
       </h1>
-      <p v-if="isPasswordProtected" class="text-sm text-text-muted">
-        The password is not included in the link and was never sent to the
-        server. Share the password separately with the recipient.
+      <p
+        v-if="isPasswordProtected"
+        class="text-base text-text-muted leading-relaxed"
+      >
+        The password was never sent to the server. Share it separately with the
+        recipient.
       </p>
-      <p v-else class="text-sm text-text-muted">
-        Share this link with your recipient. The decryption key is included in
-        the link and was never sent to the server.
+      <p v-else class="text-base text-text-muted leading-relaxed">
+        The decryption key is included in the link and was never sent to the
+        server.
       </p>
     </div>
 
     <div class="space-y-2">
-      <label for="drop-url" class="block text-sm font-medium text-text-muted">
-        Drop Link
+      <label
+        for="drop-url"
+        class="block font-heading text-base font-semibold text-text"
+      >
+        Drop link
       </label>
       <div class="flex flex-col sm:flex-row gap-2">
         <input
@@ -108,36 +116,61 @@ async function handleCopyLink() {
           type="text"
           readonly
           :value="dropUrl"
-          class="w-full p-3.5 text-base rounded-lg border border-border bg-background text-text focus:outline-none focus:border-text font-mono select-all"
+          class="w-full p-3.5 text-base rounded-xl border border-border bg-background text-text focus:outline-none focus:border-text select-all"
         />
         <button
           type="button"
           @click="handleCopyLink"
-          class="shrink-0 px-5 py-3 text-base font-semibold bg-primary hover:bg-text text-primary-text rounded-lg transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-surface"
+          class="shrink-0 px-5 py-3 font-heading text-base font-semibold bg-primary hover:bg-neutral-200 text-primary-text rounded-xl transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-surface inline-flex items-center justify-center gap-2"
         >
-          {{ isCopied ? "Copied!" : "Copy link" }}
+          <svg
+            v-if="isCopied"
+            viewBox="0 0 20 20"
+            fill="currentColor"
+            class="w-4 h-4 shrink-0"
+            aria-hidden="true"
+          >
+            <path
+              fill-rule="evenodd"
+              clip-rule="evenodd"
+              d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+            />
+          </svg>
+          <svg
+            v-else
+            viewBox="0 0 20 20"
+            fill="currentColor"
+            class="w-4 h-4 shrink-0"
+            aria-hidden="true"
+          >
+            <path
+              d="M7 9a2 2 0 012-2h6a2 2 0 012 2v6a2 2 0 01-2 2H9a2 2 0 01-2-2V9z"
+            />
+            <path d="M5 3a2 2 0 00-2 2v6a2 2 0 002 2V5h8a2 2 0 00-2-2H5z" />
+          </svg>
+          <span>{{ isCopied ? "Copied!" : "Copy link" }}</span>
         </button>
       </div>
     </div>
 
-    <!-- Expiration & Views Meta -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-      <div class="p-3.5 rounded-lg border border-border bg-background">
-        <span class="block text-xs font-medium text-text-muted mb-1">
-          Expiration
-        </span>
-        <span class="block text-base font-semibold text-text">
-          {{ dropExpirationText }}
-        </span>
-      </div>
-
-      <div class="p-3.5 rounded-lg border border-border bg-background">
-        <span class="block text-xs font-medium text-text-muted mb-1">
-          Views
-        </span>
-        <span class="block text-base font-semibold text-text">
-          {{ dropViewsText }}
-        </span>
+    <div class="rounded-xl border border-border bg-background p-4 sm:p-5">
+      <div class="grid grid-cols-2 divide-x divide-border">
+        <div class="pr-4 sm:pr-6">
+          <span class="block text-sm font-medium text-text-muted mb-1">
+            Expiration
+          </span>
+          <span class="block font-heading text-base font-semibold text-text">
+            {{ dropExpirationText }}
+          </span>
+        </div>
+        <div class="pl-4 sm:pl-6">
+          <span class="block text-sm font-medium text-text-muted mb-1">
+            Views
+          </span>
+          <span class="block font-heading text-base font-semibold text-text">
+            {{ dropViewsText }}
+          </span>
+        </div>
       </div>
     </div>
 
@@ -145,9 +178,9 @@ async function handleCopyLink() {
       <button
         type="button"
         @click="emit('create-another')"
-        class="w-full sm:w-auto px-6 py-3 text-base font-semibold bg-surface hover:bg-surface-hover text-text rounded-lg border border-border transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-surface"
+        class="w-full sm:w-auto px-6 py-3 font-heading text-base font-semibold bg-primary hover:bg-neutral-200 text-primary-text rounded-xl transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-surface shadow-sm"
       >
-        Create another
+        Create another drop
       </button>
     </div>
   </div>
