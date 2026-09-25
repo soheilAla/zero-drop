@@ -301,6 +301,7 @@ async function handleCreateDrop() {
           id="secret"
           v-model="secret"
           @input="handleInput"
+          dir="auto"
           placeholder="Enter your sensitive text here..."
           :class="[
             'w-full flex-1 min-h-[260px] lg:min-h-[330px] p-4 text-base leading-relaxed rounded-xl bg-background text-text placeholder-text-subtle focus:outline-none transition-colors resize-none border',

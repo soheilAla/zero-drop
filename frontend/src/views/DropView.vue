@@ -292,6 +292,7 @@ onMounted(() => {
         </div>
         <textarea
           id="decrypted-secret"
+          dir="auto"
           readonly
           rows="6"
           :value="decryptedSecret"

@@ -47,6 +47,11 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+textarea[dir="auto"] {
+  unicode-bidi: plaintext;
+  text-align: start;
+}
+
 /* Remove number input spinners */
 input[type="number"]::-webkit-outer-spin-button,
 input[type="number"]::-webkit-inner-spin-button {
