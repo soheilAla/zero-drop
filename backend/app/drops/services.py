@@ -45,7 +45,7 @@ async def create_drop(db: AsyncSession, data: DropCreateRequest) -> Drop:
     if data.crypto_version != 1:
         raise DropValidationError("Unsupported encryption protocol version")
 
-    if kdf_salt and len(kdf_salt) < 16:
+    if kdf_salt is not None and len(kdf_salt) != 16:
         raise DropValidationError("Invalid KDF salt")
 
     if data.expiration_seconds < settings.min_expiration_seconds:
