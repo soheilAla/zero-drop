@@ -1,4 +1,5 @@
 import asyncio
+import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -13,11 +14,16 @@ from app.drops.services import cleanup_expired_drops
 from app.middleware.rate_limit import RateLimitMiddleware
 from app.middleware.security_headers import security_headers
 
+logger = logging.getLogger(__name__)
+
 
 async def cleanup_drops_loop():
     while True:
-        async with AsyncSessionLocal() as db:
-            await cleanup_expired_drops(db)
+        try:
+            async with AsyncSessionLocal() as db:
+                await cleanup_expired_drops(db)
+        except Exception:
+            logger.exception("Failed to cleanup expired drops")
 
         await asyncio.sleep(3600)
 
