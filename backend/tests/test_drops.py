@@ -6,6 +6,7 @@ import pytest
 
 from app.core.config import settings
 from app.drops.exceptions import DropTooLargeError, DropValidationError
+from app.drops.models import Drop
 from app.drops.schemas import DropCreateRequest
 from app.drops.services import consume_drop, create_drop, get_drop
 
@@ -209,7 +210,7 @@ async def test_consume_drop_rejects_invalid_token_without_decrementing(db):
 
 
 @pytest.mark.asyncio
-async def test_consume_last_view_makes_drop_unavailable(db):
+async def test_consume_last_view_deletes_drop(db):
     token = b"s" * 32
 
     created = await create_drop(
@@ -227,8 +228,7 @@ async def test_consume_last_view_makes_drop_unavailable(db):
     )
 
     assert consumed is not None
-    assert consumed.remaining_views == 0
-    assert await get_drop(db, created.id) is None
+    assert await db.get(Drop, created.id) is None
 
 
 @pytest.mark.asyncio
