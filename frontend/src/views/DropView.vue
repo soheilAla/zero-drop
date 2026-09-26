@@ -14,9 +14,13 @@ const isLoading = ref(true);
 const errorMessage = ref("");
 const decryptedSecret = ref("");
 const isCopied = ref(false);
+const isRevealed = ref(false);
 
 const drop = ref<DropResponse | null>(null);
 const password = ref("");
+
+let pendingConsumeToken = "";
+let pendingPlaintext = "";
 
 async function handleCopySecret() {
   if (!decryptedSecret.value) {
@@ -110,8 +114,8 @@ async function loadAndDecryptDrop() {
       ivBytes,
       keyBytes,
     );
-    await consumeDrop(drop.value.id, bytesToBase64Url(consumeToken));
-    decryptedSecret.value = plaintext;
+    pendingPlaintext = plaintext;
+    pendingConsumeToken = bytesToBase64Url(consumeToken);
   } catch (err: unknown) {
     if (
       err instanceof Error &&
@@ -128,6 +132,35 @@ async function loadAndDecryptDrop() {
   }
 
   isLoading.value = false;
+}
+
+async function handleReveal() {
+  if (!drop.value || !pendingConsumeToken) {
+    return;
+  }
+
+  isLoading.value = true;
+  errorMessage.value = "";
+
+  try {
+    await consumeDrop(drop.value.id, pendingConsumeToken);
+    decryptedSecret.value = pendingPlaintext;
+    isRevealed.value = true;
+  } catch (err: unknown) {
+    drop.value = null;
+    if (
+      err instanceof Error &&
+      err.message.toLowerCase().includes("not found")
+    ) {
+      errorMessage.value =
+        "Drop not found or it has already expired / been consumed.";
+    } else {
+      errorMessage.value =
+        err instanceof Error ? err.message : "Failed to consume drop.";
+    }
+  } finally {
+    isLoading.value = false;
+  }
 }
 
 async function handleUnlock() {
@@ -165,6 +198,7 @@ async function handleUnlock() {
     }
 
     decryptedSecret.value = plaintext;
+    isRevealed.value = true;
   } catch {
     errorMessage.value = "Invalid password.";
   } finally {
@@ -179,7 +213,7 @@ onMounted(() => {
 
 <template>
   <section
-    class="w-full max-w-xl p-6 sm:p-8 bg-surface rounded-3xl border border-border"
+    class="w-full max-w-xl p-6 sm:p-8 bg-surface rounded-3xl border border-border -translate-y-8 sm:translate-y-0"
   >
     <h1 class="font-heading text-2xl sm:text-3xl font-semibold text-text mb-6">
       Secure drop
@@ -208,7 +242,7 @@ onMounted(() => {
       </div>
     </div>
 
-    <div v-else-if="drop?.kdf_salt && !decryptedSecret" class="space-y-5">
+    <div v-else-if="drop?.kdf_salt && !isRevealed" class="space-y-5">
       <div>
         <label
           for="password"
@@ -241,9 +275,26 @@ onMounted(() => {
           type="button"
           :disabled="isLoading"
           @click="handleUnlock"
-          class="w-full sm:w-auto px-6 py-3 font-heading text-base font-semibold bg-primary hover:bg-text text-primary-text rounded-xl transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-surface disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-primary"
+          class="w-full sm:w-auto px-6 py-3 font-heading text-base font-semibold bg-primary hover:bg-neutral-200 text-primary-text rounded-xl transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-surface disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-primary shadow-sm"
         >
           {{ isLoading ? "Unlocking..." : "Unlock" }}
+        </button>
+      </div>
+    </div>
+
+    <div v-else-if="!isRevealed && !drop?.kdf_salt" class="space-y-5">
+      <p class="text-base text-text-muted leading-relaxed">
+        This drop is ready to be revealed.
+      </p>
+
+      <div class="pt-2">
+        <button
+          type="button"
+          :disabled="isLoading"
+          @click="handleReveal"
+          class="w-full sm:w-auto px-6 py-3 font-heading text-base font-semibold bg-primary hover:bg-neutral-200 text-primary-text rounded-xl transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-surface disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-primary shadow-sm"
+        >
+          {{ isLoading ? "Revealing..." : "Reveal note" }}
         </button>
       </div>
     </div>
