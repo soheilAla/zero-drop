@@ -3,6 +3,7 @@ import { base64UrlToBytes, bytesToBase64Url } from "./base64url";
 const PBKDF2_ITERATIONS = 600_000;
 const PASSWORD_KEY_LENGTH = 32;
 const PASSWORD_SALT_LENGTH = 16;
+const MAX_DROP_SIZE_BYTES = 1_048_576;
 
 function toArrayBuffer(bytes: Uint8Array): ArrayBuffer {
   return new Uint8Array(bytes).buffer;
@@ -78,6 +79,10 @@ export async function encryptContent(plaintext: string) {
     cryptoKey,
     plaintextBytes,
   );
+
+  if (encrypted.byteLength > MAX_DROP_SIZE_BYTES) {
+    throw new Error("Note is too large");
+  }
 
   return {
     ciphertext: new Uint8Array(encrypted),
@@ -160,6 +165,10 @@ export async function encryptContentWithPassword(
     key,
     plaintextBytes,
   );
+
+  if (encrypted.byteLength > MAX_DROP_SIZE_BYTES) {
+    throw new Error("Note is too large");
+  }
 
   return {
     ciphertext: new Uint8Array(encrypted),
