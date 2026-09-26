@@ -22,7 +22,7 @@ function handleCreateAnother() {
       'w-full p-6 sm:p-8 lg:p-12 xl:p-14 bg-surface rounded-3xl border border-border transition-all duration-200',
       createdDrop
         ? 'max-w-xl sm:max-w-2xl lg:max-w-3xl'
-        : 'max-w-6xl xl:max-w-[1360px] 2xl:max-w-[1480px]',
+        : 'max-w-6xl xl:max-w-340 2xl:max-w-370',
     ]"
   >
     <DropCreated

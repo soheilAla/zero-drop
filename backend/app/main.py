@@ -10,7 +10,7 @@ from app.core.database import AsyncSessionLocal
 from app.drops.exceptions import DropTooLargeError, DropValidationError
 from app.drops.handlers import drop_error_handler, drop_too_large_error_handler
 from app.drops.routers import router as drops_router
-from app.drops.services import cleanup_expired_drops
+from app.drops.services import cleanup_consumed_drops, cleanup_expired_drops
 from app.middleware.rate_limit import RateLimitMiddleware
 from app.middleware.security_headers import security_headers
 
@@ -22,8 +22,9 @@ async def cleanup_drops_loop():
         try:
             async with AsyncSessionLocal() as db:
                 await cleanup_expired_drops(db)
+                await cleanup_consumed_drops(db)
         except Exception:
-            logger.exception("Failed to cleanup expired drops")
+            logger.exception("Failed to cleanup drops")
 
         await asyncio.sleep(3600)
 

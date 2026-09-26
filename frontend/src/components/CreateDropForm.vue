@@ -22,6 +22,8 @@ const emit = defineEmits<{
 
 const MIN_EXPIRATION_SECONDS = 60;
 const MAX_EXPIRATION_SECONDS = 604800; // 7 days
+const MIN_REMAINING_VIEWS = 1;
+const MAX_REMAINING_VIEWS = 1_000_000;
 
 const secret = ref("");
 const days = ref(0);
@@ -30,8 +32,50 @@ const minutes = ref(0);
 
 const burnAfterRead = ref(false);
 const isUnlimited = ref(true);
-const customViews = ref<number | null>(5);
+const customViews = ref("5");
 const viewsError = ref("");
+
+function parseAndValidateViews(raw: string): {
+  parsed: number | null;
+  error: string;
+  isNotWholeNumber?: boolean;
+} {
+  const trimmed = raw.trim();
+  if (!trimmed) {
+    return {
+      parsed: null,
+      error: "Remaining views must be at least 1.",
+    };
+  }
+
+  if (!/^\d+$/.test(trimmed)) {
+    return {
+      parsed: 5,
+      error: "",
+      isNotWholeNumber: true,
+    };
+  }
+
+  const num = Number(trimmed);
+  if (!Number.isSafeInteger(num) || num < MIN_REMAINING_VIEWS) {
+    return {
+      parsed: null,
+      error: "Remaining views must be at least 1.",
+    };
+  }
+
+  if (num > MAX_REMAINING_VIEWS) {
+    return {
+      parsed: null,
+      error: `Remaining views cannot exceed ${MAX_REMAINING_VIEWS.toLocaleString()}.`,
+    };
+  }
+
+  return {
+    parsed: num,
+    error: "",
+  };
+}
 
 type ViewMode = "burn" | "limited" | "unlimited";
 const viewMode = computed<ViewMode>({
@@ -50,8 +94,11 @@ const viewMode = computed<ViewMode>({
     } else {
       burnAfterRead.value = false;
       isUnlimited.value = false;
-      if (!customViews.value || customViews.value < 1) {
-        customViews.value = 5;
+      if (
+        !customViews.value.trim() ||
+        parseAndValidateViews(customViews.value).parsed === null
+      ) {
+        customViews.value = "5";
       }
     }
     viewsError.value = "";
@@ -75,9 +122,7 @@ const remainingViews = computed<number | null>(() => {
   if (isUnlimited.value) {
     return null;
   }
-  return customViews.value && customViews.value >= 1
-    ? Math.floor(customViews.value)
-    : null;
+  return parseAndValidateViews(customViews.value).parsed;
 });
 
 const errorMessage = ref("");
@@ -98,7 +143,7 @@ const isFormValid = computed(() => {
   const hasValidViews =
     burnAfterRead.value ||
     isUnlimited.value ||
-    (customViews.value !== null && customViews.value >= 1);
+    parseAndValidateViews(customViews.value).parsed !== null;
 
   return hasSecret && hasValidExpiration && hasValidViews;
 });
@@ -141,26 +186,49 @@ function validateDuration() {
 
 function handleViewsInput(event: Event) {
   const target = event.target as HTMLInputElement;
-  const val = parseInt(target.value, 10);
-  customViews.value = isNaN(val) ? null : val;
-  if (viewsError.value && customViews.value && customViews.value >= 1) {
-    viewsError.value = "";
+  customViews.value = target.value;
+  if (viewsError.value) {
+    const { error } = parseAndValidateViews(customViews.value);
+    if (!error) {
+      viewsError.value = "";
+    }
   }
 }
 
-function validateViews() {
+function validateViews(): boolean {
   if (burnAfterRead.value || isUnlimited.value) {
     viewsError.value = "";
     return true;
   }
 
-  if (!customViews.value || customViews.value < 1) {
-    viewsError.value = "Remaining views must be at least 1.";
-    return false;
-  } else {
+  const trimmed = customViews.value.trim();
+  if (!trimmed) {
+    customViews.value = "5";
     viewsError.value = "";
     return true;
   }
+
+  const { parsed, error, isNotWholeNumber } = parseAndValidateViews(
+    customViews.value,
+  );
+
+  if (isNotWholeNumber) {
+    customViews.value = "5";
+    viewsError.value = "";
+    return true;
+  }
+
+  if (error) {
+    viewsError.value = error;
+    return false;
+  }
+
+  if (parsed !== null) {
+    customViews.value = String(parsed);
+  }
+
+  viewsError.value = "";
+  return true;
 }
 
 async function handleCreateDrop() {
@@ -304,7 +372,7 @@ async function handleCreateDrop() {
           dir="auto"
           placeholder="Enter your sensitive text here..."
           :class="[
-            'w-full flex-1 min-h-[260px] lg:min-h-[330px] p-4 text-base leading-relaxed rounded-xl bg-background text-text placeholder-text-subtle focus:outline-none transition-colors resize-none border',
+            'w-full flex-1 min-h-65 lg:min-h-82.5 p-4 text-base leading-relaxed rounded-xl bg-background text-text placeholder-text-subtle focus:outline-none transition-colors resize-none border',
             errorMessage
               ? 'border-danger focus:border-danger'
               : 'border-border focus:border-text',
@@ -404,7 +472,7 @@ async function handleCreateDrop() {
             @click="selectViewMode('burn')"
             @keydown.enter.space.prevent="selectViewMode('burn')"
             :class="[
-              'w-full h-[56px] px-4 flex items-center justify-between text-left transition-colors cursor-pointer select-none',
+              'w-full h-14 px-4 flex items-center justify-between text-left transition-colors cursor-pointer select-none',
               viewMode === 'burn'
                 ? 'bg-surface-hover/70 text-text'
                 : 'text-text-muted hover:text-text hover:bg-surface/50',
@@ -441,7 +509,7 @@ async function handleCreateDrop() {
             @click="selectViewMode('limited')"
             @keydown.enter.space.prevent="selectViewMode('limited')"
             :class="[
-              'w-full h-[56px] px-4 flex items-center justify-between text-left transition-colors cursor-pointer select-none',
+              'w-full h-14 px-4 flex items-center justify-between text-left transition-colors cursor-pointer select-none',
               viewMode === 'limited'
                 ? 'bg-surface-hover/70 text-text'
                 : 'text-text-muted hover:text-text hover:bg-surface/50',
@@ -468,19 +536,20 @@ async function handleCreateDrop() {
             </div>
 
             <div
-              class="w-32 flex items-center justify-end text-right gap-1.5"
+              class="w-34 flex items-center justify-end text-right gap-1.5"
               @click.stop
             >
               <template v-if="viewMode === 'limited'">
                 <input
                   id="remaining-views-input"
-                  v-model.number="customViews"
+                  v-model="customViews"
                   @input="handleViewsInput"
                   @blur="validateViews"
-                  type="number"
-                  min="1"
+                  @keydown.enter="validateViews"
+                  type="text"
+                  inputmode="numeric"
                   placeholder="5"
-                  class="w-16 h-8 text-sm font-medium text-center rounded-lg border border-border bg-surface text-text focus:outline-none focus:border-text transition-colors"
+                  class="w-20 h-8 text-sm font-medium text-center rounded-lg border border-border bg-surface text-text focus:outline-none focus:border-text transition-colors"
                 />
                 <span class="text-sm text-text-muted">views</span>
               </template>
@@ -493,7 +562,7 @@ async function handleCreateDrop() {
             @click="selectViewMode('unlimited')"
             @keydown.enter.space.prevent="selectViewMode('unlimited')"
             :class="[
-              'w-full h-[56px] px-4 flex items-center justify-between text-left transition-colors cursor-pointer select-none',
+              'w-full h-14 px-4 flex items-center justify-between text-left transition-colors cursor-pointer select-none',
               viewMode === 'unlimited'
                 ? 'bg-surface-hover/70 text-text'
                 : 'text-text-muted hover:text-text hover:bg-surface/50',

@@ -121,6 +121,11 @@ async def consume_drop(
 
 async def cleanup_expired_drops(db: AsyncSession) -> None:
     stmt = delete(Drop).where(Drop.expires_at <= datetime.now(UTC))
+    await db.execute(stmt)
+    await db.commit()
 
+
+async def cleanup_consumed_drops(db: AsyncSession) -> None:
+    stmt = delete(Drop).where(Drop.remaining_views == 0)
     await db.execute(stmt)
     await db.commit()

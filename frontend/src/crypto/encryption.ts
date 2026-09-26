@@ -12,7 +12,7 @@ function generateConsumeToken(): Uint8Array {
   return crypto.getRandomValues(new Uint8Array(32));
 }
 
-function createPaylaod(plaintext: string, consumeToken: Uint8Array) {
+function createPayload(plaintext: string, consumeToken: Uint8Array) {
   return JSON.stringify({
     plaintext,
     consume_token: bytesToBase64Url(consumeToken),
@@ -67,7 +67,7 @@ export async function encryptContent(plaintext: string) {
     ["encrypt"],
   );
 
-  const payload = createPaylaod(plaintext, consumeToken);
+  const payload = createPayload(plaintext, consumeToken);
   const plaintextBytes = new TextEncoder().encode(payload);
 
   const encrypted = await crypto.subtle.encrypt(
@@ -149,8 +149,8 @@ export async function encryptContentWithPassword(
   const key = await deriveKeyFromPassword(password, salt);
   const consumeToken = generateConsumeToken();
 
-  const paylaod = createPaylaod(plaintext, consumeToken);
-  const plaintextBytes = new TextEncoder().encode(paylaod);
+  const payload = createPayload(plaintext, consumeToken);
+  const plaintextBytes = new TextEncoder().encode(payload);
 
   const encrypted = await crypto.subtle.encrypt(
     {
