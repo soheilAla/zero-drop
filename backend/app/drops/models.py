@@ -26,7 +26,7 @@ class Drop(Base):
     )
 
     expires_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False
+        DateTime(timezone=True), nullable=False, index=True
     )
 
     remaining_views: Mapped[int | None] = mapped_column(
