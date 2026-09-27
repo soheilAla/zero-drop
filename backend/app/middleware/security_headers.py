@@ -14,5 +14,5 @@ async def security_headers(
     response.headers["Content-Security-Policy"] = (
         "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline';"
     )
-    
+
     return response

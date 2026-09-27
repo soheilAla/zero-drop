@@ -6,7 +6,7 @@ class Settings(BaseSettings):
     test_database_url: str
     max_drop_size_bytes: int
     min_expiration_seconds: int = 60
-    max_expiration_seconds: int = 604800  # 7 days
+    max_expiration_seconds: int = 7 * 24 * 60 * 60
     max_remaining_views: int = 1_000_000
     frontend_origin: str
     rate_limit_max_requests: int

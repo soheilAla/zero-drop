@@ -1,3 +1,5 @@
+from typing import Annotated
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -10,6 +12,8 @@ from app.drops.schemas import (
 )
 from app.drops.services import consume_drop, create_drop, encode_base64url, get_drop
 
+DbSession = Annotated[AsyncSession, Depends(get_db)]
+
 router = APIRouter(prefix="/drops", tags=["drops"])
 
 
@@ -19,9 +23,7 @@ router = APIRouter(prefix="/drops", tags=["drops"])
     response_model=DropCreateResponse,
     description="Store an encrypted drop with an expiration time and optional view limit.",
 )
-async def create_drop_router(
-    data: DropCreateRequest, db: AsyncSession = Depends(get_db)
-):
+async def create_drop_router(data: DropCreateRequest, db: DbSession):
     drop = await create_drop(db, data)
 
     return DropCreateResponse(
@@ -34,7 +36,7 @@ async def create_drop_router(
     response_model=DropResponse,
     description="Retrieve an active drop without consuming a view.",
 )
-async def get_drop_router(drop_id: str, db: AsyncSession = Depends(get_db)):
+async def get_drop_router(drop_id: str, db: DbSession):
     drop = await get_drop(db, drop_id)
 
     if not drop:
@@ -58,9 +60,7 @@ async def get_drop_router(drop_id: str, db: AsyncSession = Depends(get_db)):
     status_code=status.HTTP_204_NO_CONTENT,
     description="Consume one view of a drop after successful decryption.",
 )
-async def consume_drop_router(
-    drop_id: str, data: DropConsumeRequest, db: AsyncSession = Depends(get_db)
-):
+async def consume_drop_router(drop_id: str, data: DropConsumeRequest, db: DbSession):
     drop = await consume_drop(db, drop_id, data.consume_token)
 
     if not drop:

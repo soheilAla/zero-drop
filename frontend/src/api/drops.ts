@@ -59,10 +59,7 @@ export async function getDrop(dropId: string): Promise<DropResponse> {
   return response.json();
 }
 
-export async function consumeDrop(
-  dropId: string,
-  consumeToken: string,
-): Promise<void> {
+export async function consumeDrop(dropId: string, consumeToken: string): Promise<void> {
   const response = await fetch(`/drops/${dropId}/consume`, {
     method: "POST",
     headers: {

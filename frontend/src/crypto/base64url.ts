@@ -5,10 +5,7 @@ export function bytesToBase64Url(bytes: Uint8Array): string {
     binary += String.fromCharCode(byte);
   }
 
-  return btoa(binary)
-    .replace(/\//g, "_")
-    .replace(/\+/g, "-")
-    .replace(/=+$/, "");
+  return btoa(binary).replace(/\//g, "_").replace(/\+/g, "-").replace(/=+$/, "");
 }
 
 export function base64UrlToBytes(base64Url: string): Uint8Array {

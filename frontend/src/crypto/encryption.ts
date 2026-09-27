@@ -3,7 +3,7 @@ import { base64UrlToBytes, bytesToBase64Url } from "./base64url";
 const PBKDF2_ITERATIONS = 600_000;
 const PASSWORD_KEY_LENGTH = 32;
 const PASSWORD_SALT_LENGTH = 16;
-const MAX_DROP_SIZE_BYTES = 1_048_576;
+const MAX_DROP_SIZE_BYTES = 1024 ** 2;
 
 function toArrayBuffer(bytes: Uint8Array): ArrayBuffer {
   return new Uint8Array(bytes).buffer;
@@ -47,10 +47,7 @@ function parsePayload(payload: string) {
 }
 
 export async function hashConsumeToken(consumeToken: Uint8Array) {
-  const hash = await crypto.subtle.digest(
-    "SHA-256",
-    toArrayBuffer(consumeToken),
-  );
+  const hash = await crypto.subtle.digest("SHA-256", toArrayBuffer(consumeToken));
 
   return hash;
 }
@@ -60,13 +57,7 @@ export async function encryptContent(plaintext: string) {
   const iv = crypto.getRandomValues(new Uint8Array(12));
   const consumeToken = generateConsumeToken();
 
-  const cryptoKey = await crypto.subtle.importKey(
-    "raw",
-    key,
-    "AES-GCM",
-    false,
-    ["encrypt"],
-  );
+  const cryptoKey = await crypto.subtle.importKey("raw", key, "AES-GCM", false, ["encrypt"]);
 
   const payload = createPayload(plaintext, consumeToken);
   const plaintextBytes = new TextEncoder().encode(payload);
@@ -92,18 +83,10 @@ export async function encryptContent(plaintext: string) {
   };
 }
 
-export async function decryptContent(
-  ciphertext: Uint8Array,
-  iv: Uint8Array,
-  key: Uint8Array,
-) {
-  const cryptoKey = await crypto.subtle.importKey(
-    "raw",
-    toArrayBuffer(key),
-    "AES-GCM",
-    false,
-    ["decrypt"],
-  );
+export async function decryptContent(ciphertext: Uint8Array, iv: Uint8Array, key: Uint8Array) {
+  const cryptoKey = await crypto.subtle.importKey("raw", toArrayBuffer(key), "AES-GCM", false, [
+    "decrypt",
+  ]);
 
   const decrypted = await crypto.subtle.decrypt(
     {
@@ -145,10 +128,7 @@ async function deriveKeyFromPassword(password: string, salt: Uint8Array) {
   );
 }
 
-export async function encryptContentWithPassword(
-  plaintext: string,
-  password: string,
-) {
+export async function encryptContentWithPassword(plaintext: string, password: string) {
   const salt = crypto.getRandomValues(new Uint8Array(PASSWORD_SALT_LENGTH));
   const iv = crypto.getRandomValues(new Uint8Array(12));
   const key = await deriveKeyFromPassword(password, salt);
