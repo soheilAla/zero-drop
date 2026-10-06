@@ -64,6 +64,9 @@ Create `backend/.env`:
 ```env
 DATABASE_URL=postgresql+asyncpg://zero_drop:your_password@localhost:5432/zero_drop
 MAX_DROP_SIZE_BYTES=
+FRONTEND_ORIGIN=
+RATE_LIMIT_MAX_REQUESTS=
+RATE_LIMIT_WINDOW_SECONDS=
 ```
 
 ### Run
