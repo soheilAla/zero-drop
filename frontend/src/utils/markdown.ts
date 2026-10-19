@@ -1,9 +1,32 @@
 import DOMPurify, { type DOMPurify as DOMPurifyInstance } from "dompurify";
 import { marked } from "marked";
 
-marked.setOptions({
+export function escapeHtml(text: string): string {
+  return text
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+// Disabling html and tag tokenizers prevents raw HTML from being parsed into DOM nodes.
+marked.use({
   gfm: true,
   breaks: true,
+  tokenizer: {
+    html() {
+      return undefined;
+    },
+    tag() {
+      return undefined;
+    },
+  },
+  renderer: {
+    html({ text }: { text: string }) {
+      return escapeHtml(text);
+    },
+  },
 });
 
 let purifyInstance: DOMPurifyInstance | null = null;
@@ -51,21 +74,20 @@ function getPurify(): DOMPurifyInstance | null {
   return purifyInstance;
 }
 
-// Supports headings, bold, italic, lists, links, blockquotes, inline code, fenced code blocks.
-// Disables unsafe raw HTML and attributes to prevent XSS.
 export function renderMarkdown(source: string): string {
   if (!source?.trim()) {
     return "";
   }
 
-  const rawHtml = marked.parse(source) as string;
+  const compiledHtml = marked.parse(source) as string;
   const purify = getPurify();
 
   if (purify) {
-    return purify.sanitize(rawHtml, {
+    return purify.sanitize(compiledHtml, {
       ADD_ATTR: ["target", "rel"],
     });
   }
 
-  return rawHtml;
+  // Return escaped source text if DOMPurify is unavailable
+  return escapeHtml(source);
 }
