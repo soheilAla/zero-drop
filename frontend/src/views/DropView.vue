@@ -290,40 +290,6 @@ onMounted(() => {
                         Secret message
                     </label>
                     <div class="flex items-center gap-3">
-                        <div
-                            role="tablist"
-                            aria-label="Viewer mode"
-                            class="flex items-center p-0.5 rounded-lg bg-surface border border-border text-xs font-heading font-medium"
-                        >
-                            <button
-                                type="button"
-                                role="tab"
-                                :aria-selected="viewerMode === 'preview'"
-                                @click="viewerMode = 'preview'"
-                                :class="[
-                                    'px-2.5 py-1 rounded-md transition-colors cursor-pointer focus:outline-none',
-                                    viewerMode === 'preview'
-                                        ? 'bg-surface-hover text-text shadow-xs'
-                                        : 'text-text-muted hover:text-text',
-                                ]"
-                            >
-                                Preview
-                            </button>
-                            <button
-                                type="button"
-                                role="tab"
-                                :aria-selected="viewerMode === 'raw'"
-                                @click="viewerMode = 'raw'"
-                                :class="[
-                                    'px-2.5 py-1 rounded-md transition-colors cursor-pointer focus:outline-none',
-                                    viewerMode === 'raw'
-                                        ? 'bg-surface-hover text-text shadow-xs'
-                                        : 'text-text-muted hover:text-text',
-                                ]"
-                            >
-                                Raw
-                            </button>
-                        </div>
                         <button
                             type="button"
                             @click="handleCopySecret"
@@ -358,6 +324,40 @@ onMounted(() => {
                             </svg>
                             <span>{{ isCopied ? "Copied!" : "Copy" }}</span>
                         </button>
+                        <div
+                            role="tablist"
+                            aria-label="Viewer mode"
+                            class="flex items-center p-0.5 rounded-lg bg-surface border border-border text-sm font-heading font-medium"
+                        >
+                            <button
+                                type="button"
+                                role="tab"
+                                :aria-selected="viewerMode === 'raw'"
+                                @click="viewerMode = 'raw'"
+                                :class="[
+                                    'px-3 py-1 rounded-md transition-colors cursor-pointer focus:outline-none',
+                                    viewerMode === 'raw'
+                                        ? 'bg-surface-hover text-text shadow-xs'
+                                        : 'text-text-muted hover:text-text',
+                                ]"
+                            >
+                                Raw
+                            </button>
+                            <button
+                                type="button"
+                                role="tab"
+                                :aria-selected="viewerMode === 'preview'"
+                                @click="viewerMode = 'preview'"
+                                :class="[
+                                    'px-3 py-1 rounded-md transition-colors cursor-pointer focus:outline-none',
+                                    viewerMode === 'preview'
+                                        ? 'bg-surface-hover text-text shadow-xs'
+                                        : 'text-text-muted hover:text-text',
+                                ]"
+                            >
+                                Preview
+                            </button>
+                        </div>
                     </div>
                 </div>
 

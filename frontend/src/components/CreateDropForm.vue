@@ -4,6 +4,7 @@ import { createDrop } from "@/api/drops";
 import MarkdownPreview from "@/components/MarkdownPreview.vue";
 import { bytesToBase64Url } from "@/crypto/base64url";
 import { encryptContent, encryptContentWithPassword, hashConsumeToken } from "@/crypto/encryption";
+import { evaluatePasswordStrength, MIN_PASSWORD_LENGTH } from "@/utils/password";
 
 export interface CreatedDropPayload {
   dropUrl: string;
@@ -104,6 +105,8 @@ function selectViewMode(mode: ViewMode) {
 }
 
 const password = ref("");
+const passwordError = ref("");
+const passwordStrength = computed(() => evaluatePasswordStrength(password.value));
 
 const isLoading = ref(false);
 const submitError = ref("");
@@ -137,8 +140,9 @@ const isFormValid = computed(() => {
     burnAfterRead.value ||
     isUnlimited.value ||
     parseAndValidateViews(customViews.value).parsed !== null;
+  const hasValidPassword = !password.value || password.value.length >= MIN_PASSWORD_LENGTH;
 
-  return hasSecret && hasValidExpiration && hasValidViews;
+  return hasSecret && hasValidExpiration && hasValidViews && hasValidPassword;
 });
 
 function handleInput() {
@@ -222,6 +226,24 @@ function validateViews(): boolean {
   return true;
 }
 
+function validatePassword(): boolean {
+  if (password.value && password.value.length < MIN_PASSWORD_LENGTH) {
+    passwordError.value = `Password must be at least ${MIN_PASSWORD_LENGTH} characters.`;
+    return false;
+  }
+  passwordError.value = "";
+  return true;
+}
+
+function handlePasswordInput() {
+  if (passwordError.value) {
+    validatePassword();
+  }
+  if (submitError.value) {
+    submitError.value = "";
+  }
+}
+
 async function handleCreateDrop() {
   if (isLoading.value) {
     return;
@@ -238,8 +260,9 @@ async function handleCreateDrop() {
 
   const durationValid = validateDuration();
   const viewsValid = validateViews();
+  const passwordValid = validatePassword();
 
-  if (!durationValid || !viewsValid) {
+  if (!durationValid || !viewsValid || !passwordValid) {
     hasError = true;
   }
 
@@ -355,7 +378,7 @@ async function handleCreateDrop() {
                     <div
                         role="tablist"
                         aria-label="Editor mode"
-                        class="flex items-center p-0.5 rounded-lg bg-surface border border-border text-xs font-heading font-medium"
+                        class="flex items-center p-0.5 rounded-lg bg-surface border border-border text-sm font-heading font-medium"
                     >
                         <button
                             type="button"
@@ -363,7 +386,7 @@ async function handleCreateDrop() {
                             :aria-selected="editorMode === 'raw'"
                             @click="editorMode = 'raw'"
                             :class="[
-                                'px-2.5 py-1 rounded-md transition-colors cursor-pointer focus:outline-none',
+                                'px-3 py-1 rounded-md transition-colors cursor-pointer focus:outline-none',
                                 editorMode === 'raw'
                                     ? 'bg-surface-hover text-text shadow-xs'
                                     : 'text-text-muted hover:text-text',
@@ -377,7 +400,7 @@ async function handleCreateDrop() {
                             :aria-selected="editorMode === 'preview'"
                             @click="editorMode = 'preview'"
                             :class="[
-                                'px-2.5 py-1 rounded-md transition-colors cursor-pointer focus:outline-none',
+                                'px-3 py-1 rounded-md transition-colors cursor-pointer focus:outline-none',
                                 editorMode === 'preview'
                                     ? 'bg-surface-hover text-text shadow-xs'
                                     : 'text-text-muted hover:text-text',
@@ -598,7 +621,12 @@ async function handleCreateDrop() {
                                     type="text"
                                     inputmode="numeric"
                                     placeholder="5"
-                                    class="w-20 h-8 text-sm font-medium text-center rounded-lg border border-border bg-surface text-text focus:outline-none focus:border-text transition-colors"
+                                    :class="[
+                                        'w-20 h-8 text-sm font-medium text-center rounded-lg border bg-surface text-text focus:outline-none transition-colors',
+                                        viewsError
+                                            ? 'border-danger focus:border-danger'
+                                            : 'border-border focus:border-text',
+                                    ]"
                                 />
                                 <span class="text-sm text-text-muted"
                                     >views</span
@@ -664,9 +692,36 @@ async function handleCreateDrop() {
                     v-model="password"
                     type="password"
                     autocomplete="new-password"
-                    placeholder="Optional password"
-                    class="w-full h-12 px-4 text-base rounded-xl border border-border bg-background text-text placeholder-text-subtle focus:outline-none focus:border-text transition-colors"
+                    placeholder="Optional password (min. 8 characters)"
+                    @input="handlePasswordInput"
+                    @blur="validatePassword"
+                    :class="[
+                        'w-full h-12 px-4 text-base rounded-xl border bg-background text-text placeholder-text-subtle focus:outline-none transition-colors',
+                        passwordError
+                            ? 'border-danger focus:border-danger'
+                            : 'border-border focus:border-text',
+                    ]"
                 />
+                <div v-if="password" class="mt-2.5 space-y-1.5">
+                    <div class="flex items-center justify-between text-sm font-heading">
+                        <span class="text-text-muted">Password strength</span>
+                        <span :class="passwordStrength.colorClass" class="font-semibold">
+                            {{ passwordStrength.label }}
+                        </span>
+                    </div>
+                    <div class="grid grid-cols-4 gap-1.5 h-1">
+                        <div
+                            v-for="i in 4"
+                            :key="i"
+                            :class="[
+                                'h-full rounded-full transition-colors duration-200',
+                                i <= passwordStrength.score
+                                    ? passwordStrength.barClass
+                                    : 'bg-border',
+                            ]"
+                        />
+                    </div>
+                </div>
             </div>
 
             <div class="pt-2">

@@ -1,16 +1,19 @@
 services:
   db:
     image: postgres:17-alpine
-    container_name: zero-drop-db
-    restart: unless-stopped
     environment:
+      POSTGRES_DB: zero_drop
       POSTGRES_USER: zero_drop
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: zero_drop
     ports:
-      - "5432:5432"
+      - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - zero_drop_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d offhook"]
+      interval: 5s
+      retries: 10
+    restart: unless-stopped
 
 volumes:
   zero_drop_data:

@@ -1,13 +1,13 @@
-# Zero Drop
+# Zero Drop 
 
 A secure paste service with client-side encryption for text sharing.
 
 ## Features
 
-- Client-side encryption with AES-256-GCM
-- Optional password protection using PBKDF2
+- Client-side encryption with AES-256-GCM (No plaintext or password stored on the server)
 - Expiration time and view limits
-- No plaintext or password stored on the server
+- Optional password protection using PBKDF2 with live strength checker
+- Markdown support with XSS sanitization
 - Rate limiting and security headers
 - Automatic cleanup of expired drops
 
@@ -51,38 +51,43 @@ For password-protected drops, the password is used locally to derive the encrypt
 
 ## Development
 
-### Environment
-
-Create `.env` in the project root:
-
-```env
-POSTGRES_PASSWORD=
-```
-
-Create `backend/.env`:
-
-```env
-DATABASE_URL=postgresql+asyncpg://zero_drop:your_password@localhost:5432/zero_drop
-MAX_DROP_SIZE_BYTES=
-FRONTEND_ORIGIN=
-RATE_LIMIT_MAX_REQUESTS=
-RATE_LIMIT_WINDOW_SECONDS=
-```
-
-### Run
+### 1. Environment Setup
 
 ```bash
-# Start PostgreSQL
-docker compose up -d
+cp .env.example .env
+cp backend/.env.example backend/.env
+```
 
-# Backend
+Set environment variables.
+
+### 2. Start Database
+
+```bash
+docker compose up -d
+```
+
+### 3. Backend
+
+```bash
 cd backend
 uv sync
+
+# Backend (create test database once if not present)
+docker exec zero-drop-db createdb -U zero_drop zero_drop_test
+uv run pytest
+
 uv run alembic upgrade head
 uv run fastapi dev
+```
 
-# Frontend
+### 4. Frontend
+
+```bash
 cd frontend
 pnpm install
 pnpm dev
 ```
+
+## License
+
+This project is licensed under the [MIT License](LICENSE).
