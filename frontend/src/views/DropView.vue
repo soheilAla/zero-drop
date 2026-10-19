@@ -2,6 +2,7 @@
 import { onMounted, ref } from "vue";
 import { RouterLink, useRoute } from "vue-router";
 import { consumeDrop, type DropResponse, getDrop } from "@/api/drops";
+import MarkdownPreview from "@/components/MarkdownPreview.vue";
 import { base64UrlToBytes, bytesToBase64Url } from "@/crypto/base64url";
 import { decryptContent, decryptContentWithPassword } from "@/crypto/encryption";
 
@@ -12,6 +13,7 @@ const errorMessage = ref("");
 const decryptedSecret = ref("");
 const isCopied = ref(false);
 const isRevealed = ref(false);
+const viewerMode = ref<"preview" | "raw">("preview");
 
 const drop = ref<DropResponse | null>(null);
 const password = ref("");
@@ -280,55 +282,99 @@ onMounted(() => {
 
         <div v-else class="space-y-5">
             <div>
-                <div class="flex items-center justify-between mb-2">
+                <div class="flex items-center justify-between mb-2 gap-3">
                     <label
                         for="decrypted-secret"
                         class="block font-heading text-base font-semibold text-text"
                     >
                         Secret message
                     </label>
-                    <button
-                        type="button"
-                        @click="handleCopySecret"
-                        class="font-heading text-sm font-semibold text-text-muted hover:text-text transition-colors cursor-pointer inline-flex items-center gap-1.5"
-                    >
-                        <svg
-                            v-if="isCopied"
-                            viewBox="0 0 20 20"
-                            fill="currentColor"
-                            class="w-3.5 h-3.5 shrink-0"
-                            aria-hidden="true"
+                    <div class="flex items-center gap-3">
+                        <div
+                            role="tablist"
+                            aria-label="Viewer mode"
+                            class="flex items-center p-0.5 rounded-lg bg-surface border border-border text-xs font-heading font-medium"
                         >
-                            <path
-                                fill-rule="evenodd"
-                                clip-rule="evenodd"
-                                d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                            />
-                        </svg>
-                        <svg
-                            v-else
-                            viewBox="0 0 20 20"
-                            fill="currentColor"
-                            class="w-3.5 h-3.5 shrink-0"
-                            aria-hidden="true"
+                            <button
+                                type="button"
+                                role="tab"
+                                :aria-selected="viewerMode === 'preview'"
+                                @click="viewerMode = 'preview'"
+                                :class="[
+                                    'px-2.5 py-1 rounded-md transition-colors cursor-pointer focus:outline-none',
+                                    viewerMode === 'preview'
+                                        ? 'bg-surface-hover text-text shadow-xs'
+                                        : 'text-text-muted hover:text-text',
+                                ]"
+                            >
+                                Preview
+                            </button>
+                            <button
+                                type="button"
+                                role="tab"
+                                :aria-selected="viewerMode === 'raw'"
+                                @click="viewerMode = 'raw'"
+                                :class="[
+                                    'px-2.5 py-1 rounded-md transition-colors cursor-pointer focus:outline-none',
+                                    viewerMode === 'raw'
+                                        ? 'bg-surface-hover text-text shadow-xs'
+                                        : 'text-text-muted hover:text-text',
+                                ]"
+                            >
+                                Raw
+                            </button>
+                        </div>
+                        <button
+                            type="button"
+                            @click="handleCopySecret"
+                            class="font-heading text-sm font-semibold text-text-muted hover:text-text transition-colors cursor-pointer inline-flex items-center gap-1.5"
                         >
-                            <path
-                                d="M7 9a2 2 0 012-2h6a2 2 0 012 2v6a2 2 0 01-2 2H9a2 2 0 01-2-2V9z"
-                            />
-                            <path
-                                d="M5 3a2 2 0 00-2 2v6a2 2 0 002 2V5h8a2 2 0 00-2-2H5z"
-                            />
-                        </svg>
-                        <span>{{ isCopied ? "Copied!" : "Copy" }}</span>
-                    </button>
+                            <svg
+                                v-if="isCopied"
+                                viewBox="0 0 20 20"
+                                fill="currentColor"
+                                class="w-3.5 h-3.5 shrink-0"
+                                aria-hidden="true"
+                            >
+                                <path
+                                    fill-rule="evenodd"
+                                    clip-rule="evenodd"
+                                    d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                />
+                            </svg>
+                            <svg
+                                v-else
+                                viewBox="0 0 20 20"
+                                fill="currentColor"
+                                class="w-3.5 h-3.5 shrink-0"
+                                aria-hidden="true"
+                            >
+                                <path
+                                    d="M7 9a2 2 0 012-2h6a2 2 0 012 2v6a2 2 0 01-2 2H9a2 2 0 01-2-2V9z"
+                                />
+                                <path
+                                    d="M5 3a2 2 0 00-2 2v6a2 2 0 002 2V5h8a2 2 0 00-2-2H5z"
+                                />
+                            </svg>
+                            <span>{{ isCopied ? "Copied!" : "Copy" }}</span>
+                        </button>
+                    </div>
                 </div>
+
+                <div
+                    v-show="viewerMode === 'preview'"
+                    class="w-full min-h-48 max-h-120 p-3.5 text-base leading-relaxed rounded-xl bg-background text-text border border-border overflow-y-auto"
+                >
+                    <MarkdownPreview :content="decryptedSecret" />
+                </div>
+
                 <textarea
+                    v-show="viewerMode === 'raw'"
                     id="decrypted-secret"
                     dir="auto"
                     readonly
-                    rows="6"
                     :value="decryptedSecret"
-                    class="w-full p-3.5 text-base leading-relaxed rounded-xl bg-background text-text border border-border focus:outline-none select-all resize-none"
+                    class="w-full min-h-48 max-h-120 p-3.5 text-base leading-relaxed rounded-xl bg-background text-text border border-border focus:outline-none select-all resize-none overflow-y-auto"
                 ></textarea>
             </div>
 

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
 import { createDrop } from "@/api/drops";
+import MarkdownPreview from "@/components/MarkdownPreview.vue";
 import { bytesToBase64Url } from "@/crypto/base64url";
 import { encryptContent, encryptContentWithPassword, hashConsumeToken } from "@/crypto/encryption";
 
@@ -20,6 +21,7 @@ const MIN_REMAINING_VIEWS = 1;
 const MAX_REMAINING_VIEWS = 1_000_000;
 
 const secret = ref("");
+const editorMode = ref<"raw" | "preview">("raw");
 const days = ref(0);
 const hours = ref(1);
 const minutes = ref(0);
@@ -343,25 +345,78 @@ async function handleCreateDrop() {
             </div>
 
             <div class="flex-1 flex flex-col">
-                <label
-                    for="secret"
-                    class="block font-heading text-base font-semibold text-text mb-2.5"
-                >
-                    Secret message
-                </label>
-                <textarea
-                    id="secret"
-                    v-model="secret"
-                    @input="handleInput"
-                    dir="auto"
-                    placeholder="Enter your sensitive text here..."
-                    :class="[
-                        'w-full flex-1 min-h-65 lg:min-h-82.5 p-4 text-base leading-relaxed rounded-xl bg-background text-text placeholder-text-subtle focus:outline-none transition-colors resize-none border',
-                        errorMessage
-                            ? 'border-danger focus:border-danger'
-                            : 'border-border focus:border-text',
-                    ]"
-                ></textarea>
+                <div class="flex items-center justify-between mb-2.5">
+                    <label
+                        for="secret"
+                        class="block font-heading text-base font-semibold text-text"
+                    >
+                        Secret message
+                    </label>
+                    <div
+                        role="tablist"
+                        aria-label="Editor mode"
+                        class="flex items-center p-0.5 rounded-lg bg-surface border border-border text-xs font-heading font-medium"
+                    >
+                        <button
+                            type="button"
+                            role="tab"
+                            :aria-selected="editorMode === 'raw'"
+                            @click="editorMode = 'raw'"
+                            :class="[
+                                'px-2.5 py-1 rounded-md transition-colors cursor-pointer focus:outline-none',
+                                editorMode === 'raw'
+                                    ? 'bg-surface-hover text-text shadow-xs'
+                                    : 'text-text-muted hover:text-text',
+                            ]"
+                        >
+                            Raw
+                        </button>
+                        <button
+                            type="button"
+                            role="tab"
+                            :aria-selected="editorMode === 'preview'"
+                            @click="editorMode = 'preview'"
+                            :class="[
+                                'px-2.5 py-1 rounded-md transition-colors cursor-pointer focus:outline-none',
+                                editorMode === 'preview'
+                                    ? 'bg-surface-hover text-text shadow-xs'
+                                    : 'text-text-muted hover:text-text',
+                            ]"
+                        >
+                            Preview
+                        </button>
+                    </div>
+                </div>
+
+                <div class="flex-1 flex flex-col min-h-65 lg:min-h-82.5">
+                    <textarea
+                        v-show="editorMode === 'raw'"
+                        id="secret"
+                        v-model="secret"
+                        @input="handleInput"
+                        dir="auto"
+                        placeholder="Enter your sensitive text here (Markdown supported)..."
+                        :class="[
+                            'w-full flex-1 min-h-65 lg:min-h-82.5 p-4 text-base leading-relaxed rounded-xl bg-background text-text placeholder-text-subtle focus:outline-none transition-colors resize-none border',
+                            errorMessage
+                                ? 'border-danger focus:border-danger'
+                                : 'border-border focus:border-text',
+                        ]"
+                    ></textarea>
+
+                    <div
+                        v-show="editorMode === 'preview'"
+                        :class="[
+                            'w-full flex-1 min-h-65 lg:min-h-82.5 p-4 text-base leading-relaxed rounded-xl bg-background text-text border overflow-y-auto',
+                            errorMessage
+                                ? 'border-danger'
+                                : 'border-border',
+                        ]"
+                    >
+                        <MarkdownPreview :content="secret" />
+                    </div>
+                </div>
+
                 <p
                     v-if="errorMessage"
                     class="mt-1.5 text-sm text-danger font-medium"
@@ -598,17 +653,12 @@ async function handleCreateDrop() {
 
             <!-- Password -->
             <div>
-                <div class="flex items-center justify-between mb-2.5">
-                    <label
-                        for="password"
-                        class="block font-heading text-base font-semibold text-text"
-                    >
-                        Password
-                    </label>
-                    <span class="text-sm text-text-muted font-normal"
-                        >Optional</span
-                    >
-                </div>
+                <label
+                    for="password"
+                    class="block font-heading text-base font-semibold text-text mb-2.5"
+                >
+                    Password
+                </label>
                 <input
                     id="password"
                     v-model="password"
