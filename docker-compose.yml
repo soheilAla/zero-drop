@@ -5,14 +5,51 @@ services:
       POSTGRES_DB: zero_drop
       POSTGRES_USER: zero_drop
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-    ports:
-      - "${POSTGRES_PORT:-5432}:5432"
-    volumes:
-      - zero_drop_data:/var/lib/postgresql/data
+    ports: ["${POSTGRES_PORT:-5432}:5432"]
+    volumes: [zero_drop_data:/var/lib/postgresql/data]
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d offhook"]
+      test: ["CMD", "pg_isready", "-U", "zero_drop", "-d", "zero_drop"]
       interval: 5s
-      retries: 10
+      timeout: 3s
+      retries: 3
+    restart: unless-stopped
+
+  migrate:
+    build: ./backend
+    command: ["alembic", "upgrade", "head"]
+    environment:
+      DATABASE_URL: postgresql+asyncpg://zero_drop:${POSTGRES_PASSWORD}@db:5432/zero_drop
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+
+  backend:
+    build: ./backend
+    environment:
+      DATABASE_URL: postgresql+asyncpg://zero_drop:${POSTGRES_PASSWORD}@db:5432/zero_drop
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=2)"
+        ]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend
+    ports: ["8080:80"]
+    depends_on:
+      backend:
+        condition: service_healthy
     restart: unless-stopped
 
 volumes:

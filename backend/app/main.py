@@ -2,7 +2,7 @@ import asyncio
 import logging
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Response, status
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
@@ -58,3 +58,8 @@ app.add_exception_handler(DropValidationError, drop_error_handler)
 app.add_exception_handler(DropTooLargeError, drop_too_large_error_handler)
 
 app.include_router(drops_router)
+
+
+@app.get("/health", include_in_schema=False)
+async def health_check():
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
