@@ -1,7 +1,7 @@
 export const fa = {
   // App & Layout
   "app.title": "زیرو دراپ",
-  "app.footer.builtWith": "ساخته شده با فکر توسط",
+  "app.footer.builtWith": "مهندسی‌شده برای تو توسط",
 
   // CreateDropForm
   "create.title": "ساخت دراپ امن",
@@ -60,7 +60,7 @@ export const fa = {
   "created.copied": "کپی شد",
   "created.expiration": "انقضا",
   "created.views": "محدودیت بازدید",
-  "created.createAnother": "ساخت دراپ جدید",
+  "created.createAnother": "ساخت یک دراپ دیگر",
   "created.expired": "منقضی شده",
   "created.lessThanMinute": "کمتر از یک دقیقه",
   "created.day": "روز",

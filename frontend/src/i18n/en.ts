@@ -1,7 +1,7 @@
 export const en = {
   // App & Layout
   "app.title": "ZERO DROP",
-  "app.footer.builtWith": "Built with intent by",
+  "app.footer.builtWith": "Engineered for you by",
 
   // CreateDropForm
   "create.title": "Create a secure drop",

@@ -1,17 +1,20 @@
-# Zero Drop 
+[English](README.en.md) | **فارسی**
 
-A secure paste service with client-side encryption for text sharing.
+# زیرو دراپ (Zero Drop)
 
-## Features
+یه سرویس اشتراک‌گذاری متن، متمرکز بر حفظ حریم خصوصی با رمزنگاری سمت کلاینت.
 
-- Client-side encryption with AES-256-GCM (No plaintext or password stored on the server)
-- Expiration time and view limits
-- Optional password protection using PBKDF2 with live strength checker
-- Markdown support with XSS sanitization
-- Rate limiting and security headers
-- Automatic cleanup of expired drops
+![فرم ایجاد دراپ](docs/screenshots/create-form-fa.png)
 
-## How It Works
+## ویژگی‌ها
+
+- رمزنگاری سمت کلاینت با AES-256-GCM (پیام و رمز عبور هرگز در سرور ذخیره نمی‌شن)
+- تعیین زمان انقضا و محدودیت تعداد بازدید
+- محافظت با رمز عبور (اختیاری) با استفاده از PBKDF2 و بررسی قدرت رمز
+- پشتیبانی از Markdown همراه با پیش‌نمایش زنده و ایمن‌سازی در برابر حملات XSS
+- دارای Rate limiting و هدرهای امنیتی
+
+## نحوه کار
 
 ```text
 User
@@ -31,63 +34,65 @@ Browser
   └── hashed consume token
               │
               ▼
-           FastAPI
-              │
-              ▼
-          PostgreSQL
+      FastAPI + PostgreSQL
 ```
 
-For regular drops, the encryption key is kept in the URL fragment and never sent to the server.
+- در دراپ‌های معمولی، کلید رمزگشایی داخل بخش فرگمنت URL نگهداری می‌شه و هیچ وقت به سرور نمی‌رسه.
+- در دراپ‌های محافظت‌شده با رمز، رمز عبور مستقیما در مرورگر برای تولید کلید رمزگشایی استفاده می‌شه و خود رمز هیچ وقت به سرور ارسال نمی‌شه.
 
-For password-protected drops, the password is used locally to derive the encryption key. The password itself is never sent to the server.
-
-## Stack
+## تکنولوژی‌ها
 
 - FastAPI
 - PostgreSQL
+- Nginx
 - Vue 3
 - TypeScript
 - Tailwind CSS
 
-## Development
+## اجرای سریع با Docker
 
-### 1. Environment Setup
+اجرای تمام سرویس‌ها (دیتابیس، مایگریشن‌ها، بک‌اند و پروکسی فرانت‌اند):
+
+### ۱. تنظیم متغیرهای محیطی
 
 ```bash
 cp .env.example .env
 cp backend/.env.example backend/.env
 ```
 
-Set environment variables.
+متغیرهای محیطی رو تنظیم کنید.
 
-### 2. Start Database
+### ۲. بیلد و اجرای سرویس‌ها
 
 ```bash
-docker compose up -d
+docker compose up -d --build
 ```
 
-### 3. Backend
+برنامه در آدرس `http://localhost:8080` و API در `http://localhost:8000` در دسترس خواهد بود.
+
+## توسعه محلی
+
+### ۱. بک‌اند
 
 ```bash
 cd backend
 uv sync
 
-# Backend (create test database once if not present)
+# ساخت پایگاه داده تست (یه بار در صورت نیاز)
 docker exec zero-drop-db createdb -U zero_drop zero_drop_test
 uv run pytest
 
-uv run alembic upgrade head
 uv run fastapi dev
 ```
 
-### 4. Frontend
+### ۲. فرانت‌اند
 
 ```bash
 cd frontend
-pnpm install
+pnpm install && pnpm test
 pnpm dev
 ```
 
-## License
+## مجوز (License)
 
-This project is licensed under the [MIT License](LICENSE).
+این پروژه تحت مجوز [MIT](LICENSE) منتشر شده.
