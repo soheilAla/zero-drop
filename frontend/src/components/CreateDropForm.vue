@@ -4,6 +4,7 @@ import { createDrop } from "@/api/drops";
 import MarkdownPreview from "@/components/MarkdownPreview.vue";
 import { bytesToBase64Url } from "@/crypto/base64url";
 import { encryptContent, encryptContentWithPassword, hashConsumeToken } from "@/crypto/encryption";
+import { t, toLatinDigits, translateError } from "@/i18n";
 import { evaluatePasswordStrength, MIN_PASSWORD_LENGTH } from "@/utils/password";
 
 export interface CreatedDropPayload {
@@ -23,9 +24,9 @@ const MAX_REMAINING_VIEWS = 1_000_000;
 
 const secret = ref("");
 const editorMode = ref<"raw" | "preview">("raw");
-const days = ref(0);
-const hours = ref(1);
-const minutes = ref(0);
+const days = ref<number | string>(0);
+const hours = ref<number | string>(1);
+const minutes = ref<number | string>(0);
 
 const burnAfterRead = ref(false);
 const isUnlimited = ref(true);
@@ -41,7 +42,7 @@ function parseAndValidateViews(raw: string): {
   if (!trimmed) {
     return {
       parsed: null,
-      error: "Remaining views must be at least 1.",
+      error: "error.viewsEmpty",
     };
   }
 
@@ -57,14 +58,14 @@ function parseAndValidateViews(raw: string): {
   if (!Number.isSafeInteger(num) || num < MIN_REMAINING_VIEWS) {
     return {
       parsed: null,
-      error: "Remaining views must be at least 1.",
+      error: "error.viewsMin",
     };
   }
 
   if (num > MAX_REMAINING_VIEWS) {
     return {
       parsed: null,
-      error: `Remaining views cannot exceed ${MAX_REMAINING_VIEWS.toLocaleString()}.`,
+      error: "error.viewsMax",
     };
   }
 
@@ -146,6 +147,22 @@ const isFormValid = computed(() => {
   return hasSecret && hasValidExpiration && hasValidViews && hasValidPassword;
 });
 
+function handleDurationInput(field: "days" | "hours" | "minutes", event: Event) {
+  const target = event.target as HTMLInputElement;
+  const latin = toLatinDigits(target.value).replace(/\D/g, "");
+  if (field === "days") {
+    days.value = latin;
+  } else if (field === "hours") {
+    hours.value = latin;
+  } else if (field === "minutes") {
+    minutes.value = latin;
+  }
+  target.value = latin;
+  if (durationError.value) {
+    validateDuration();
+  }
+}
+
 function handleInput() {
   if (errorMessage.value && secret.value.trim()) {
     errorMessage.value = "";
@@ -171,10 +188,10 @@ function validateDuration() {
   normalizeDuration();
 
   if (expirationSeconds.value < MIN_EXPIRATION_SECONDS) {
-    durationError.value = "Total duration must be at least 1 minute.";
+    durationError.value = "error.durationMin";
     return false;
   } else if (expirationSeconds.value > MAX_EXPIRATION_SECONDS) {
-    durationError.value = "Total duration cannot exceed 7 days.";
+    durationError.value = "error.durationMax";
     return false;
   } else {
     durationError.value = "";
@@ -184,7 +201,9 @@ function validateDuration() {
 
 function handleViewsInput(event: Event) {
   const target = event.target as HTMLInputElement;
-  customViews.value = target.value;
+  const latin = toLatinDigits(target.value);
+  customViews.value = latin;
+  target.value = latin;
   if (viewsError.value) {
     const { error } = parseAndValidateViews(customViews.value);
     if (!error) {
@@ -229,7 +248,7 @@ function validateViews(): boolean {
 
 function validatePassword(): boolean {
   if (password.value && password.value.length < MIN_PASSWORD_LENGTH) {
-    passwordError.value = `Password must be at least ${MIN_PASSWORD_LENGTH} characters.`;
+    passwordError.value = "error.passwordLength";
     return false;
   }
   passwordError.value = "";
@@ -253,7 +272,7 @@ async function handleCreateDrop() {
   let hasError = false;
 
   if (!secret.value.trim()) {
-    errorMessage.value = "Secret message cannot be empty.";
+    errorMessage.value = "error.emptySecret";
     hasError = true;
   } else {
     errorMessage.value = "";
@@ -319,8 +338,7 @@ async function handleCreateDrop() {
     });
   } catch (error: unknown) {
     console.error("Failed to create drop:", error);
-    submitError.value =
-      error instanceof Error ? error.message : "Failed to create drop. Please try again.";
+    submitError.value = error instanceof Error ? error.message : "error.createFailed";
   } finally {
     isLoading.value = false;
   }
@@ -335,11 +353,10 @@ async function handleCreateDrop() {
                 <h1
                     class="font-heading text-2xl sm:text-3xl font-semibold text-text tracking-tight"
                 >
-                    Create a secure drop
+                    {{ t("create.title") }}
                 </h1>
                 <p class="text-base text-text-muted mt-1.5 leading-relaxed">
-                    Encrypted in your browser. The decryption key and the
-                    password never reaches the server.
+                    {{ t("create.subtitle") }}
                 </p>
             </div>
 
@@ -349,7 +366,7 @@ async function handleCreateDrop() {
                         for="secret"
                         class="block font-heading text-base font-semibold text-text"
                     >
-                        Secret message
+                        {{ t("create.secretLabel") }}
                     </label>
                     <div
                         role="tablist"
@@ -368,7 +385,7 @@ async function handleCreateDrop() {
                                     : 'text-text-muted hover:text-text',
                             ]"
                         >
-                            Raw
+                            {{ t("create.modeRaw") }}
                         </button>
                         <button
                             type="button"
@@ -382,7 +399,7 @@ async function handleCreateDrop() {
                                     : 'text-text-muted hover:text-text',
                             ]"
                         >
-                            Preview
+                            {{ t("create.modePreview") }}
                         </button>
                     </div>
                 </div>
@@ -394,7 +411,7 @@ async function handleCreateDrop() {
                         v-model="secret"
                         @input="handleInput"
                         dir="auto"
-                        placeholder="Enter your sensitive text here (Markdown supported)..."
+                        :placeholder="t('create.secretPlaceholder')"
                         :class="[
                             'w-full flex-1 min-h-65 lg:min-h-82.5 p-4 text-base leading-relaxed rounded-xl bg-background text-text placeholder-text-subtle focus:outline-none transition-colors resize-none border',
                             errorMessage
@@ -412,7 +429,10 @@ async function handleCreateDrop() {
                                 : 'border-border',
                         ]"
                     >
-                        <MarkdownPreview :content="secret" />
+                        <MarkdownPreview
+                            :content="secret"
+                            :placeholder="t('create.emptyPreview')"
+                        />
                     </div>
                 </div>
 
@@ -420,7 +440,7 @@ async function handleCreateDrop() {
                     v-if="errorMessage"
                     class="mt-1.5 text-sm text-danger font-medium"
                 >
-                    {{ errorMessage }}
+                    {{ translateError(errorMessage) }}
                 </p>
             </div>
         </div>
@@ -431,7 +451,7 @@ async function handleCreateDrop() {
                 <label
                     class="block font-heading text-base font-semibold text-text mb-2.5"
                 >
-                    Expiration
+                    {{ t("create.expirationLabel") }}
                 </label>
                 <div class="grid grid-cols-3 gap-3.5">
                     <div>
@@ -439,17 +459,19 @@ async function handleCreateDrop() {
                             for="duration-days"
                             class="block text-sm font-medium text-text-muted tracking-wide mb-1.5"
                         >
-                            Days
+                            {{ t("create.days") }}
                         </label>
                         <input
                             id="duration-days"
-                            v-model.number="days"
+                            :value="days"
+                            @input="handleDurationInput('days', $event)"
                             @blur="validateDuration"
-                            type="number"
-                            min="0"
-                            max="7"
-                            step="1"
-                            class="w-full h-12 text-base font-medium rounded-xl border border-border bg-background text-text focus:outline-none focus:border-text transition-colors text-center"
+                            @keydown.enter="validateDuration"
+                            type="text"
+                            inputmode="numeric"
+                            lang="en"
+                            dir="ltr"
+                            class="w-full h-12 text-base font-medium rounded-xl border border-border bg-background text-text focus:outline-none focus:border-text transition-colors text-center tabular-nums"
                         />
                     </div>
 
@@ -458,17 +480,19 @@ async function handleCreateDrop() {
                             for="duration-hours"
                             class="block text-sm font-medium text-text-muted tracking-wide mb-1.5"
                         >
-                            Hours
+                            {{ t("create.hours") }}
                         </label>
                         <input
                             id="duration-hours"
-                            v-model.number="hours"
+                            :value="hours"
+                            @input="handleDurationInput('hours', $event)"
                             @blur="validateDuration"
-                            type="number"
-                            min="0"
-                            max="23"
-                            step="1"
-                            class="w-full h-12 text-base font-medium rounded-xl border border-border bg-background text-text focus:outline-none focus:border-text transition-colors text-center"
+                            @keydown.enter="validateDuration"
+                            type="text"
+                            inputmode="numeric"
+                            lang="en"
+                            dir="ltr"
+                            class="w-full h-12 text-base font-medium rounded-xl border border-border bg-background text-text focus:outline-none focus:border-text transition-colors text-center tabular-nums"
                         />
                     </div>
 
@@ -477,17 +501,19 @@ async function handleCreateDrop() {
                             for="duration-minutes"
                             class="block text-sm font-medium text-text-muted tracking-wide mb-1.5"
                         >
-                            Minutes
+                            {{ t("create.minutes") }}
                         </label>
                         <input
                             id="duration-minutes"
-                            v-model.number="minutes"
+                            :value="minutes"
+                            @input="handleDurationInput('minutes', $event)"
                             @blur="validateDuration"
-                            type="number"
-                            min="0"
-                            max="59"
-                            step="1"
-                            class="w-full h-12 text-base font-medium rounded-xl border border-border bg-background text-text focus:outline-none focus:border-text transition-colors text-center"
+                            @keydown.enter="validateDuration"
+                            type="text"
+                            inputmode="numeric"
+                            lang="en"
+                            dir="ltr"
+                            class="w-full h-12 text-base font-medium rounded-xl border border-border bg-background text-text focus:outline-none focus:border-text transition-colors text-center tabular-nums"
                         />
                     </div>
                 </div>
@@ -495,7 +521,7 @@ async function handleCreateDrop() {
                     v-if="durationError"
                     class="mt-1.5 text-sm text-danger font-medium"
                 >
-                    {{ durationError }}
+                    {{ translateError(durationError) }}
                 </p>
             </div>
 
@@ -504,7 +530,7 @@ async function handleCreateDrop() {
                 <label
                     class="block font-heading text-base font-semibold text-text mb-2.5"
                 >
-                    Views limit
+                    {{ t("create.viewsLabel") }}
                 </label>
 
                 <div
@@ -516,7 +542,7 @@ async function handleCreateDrop() {
                         @click="selectViewMode('burn')"
                         @keydown.enter.space.prevent="selectViewMode('burn')"
                         :class="[
-                            'w-full h-14 px-4 flex items-center justify-between text-left transition-colors cursor-pointer select-none',
+                            'w-full h-14 px-4 flex items-center justify-between transition-colors cursor-pointer select-none',
                             viewMode === 'burn'
                                 ? 'bg-surface-hover/70 text-text'
                                 : 'text-text-muted hover:text-text hover:bg-surface/50',
@@ -537,17 +563,17 @@ async function handleCreateDrop() {
                                 />
                             </span>
                             <span
-                                class="font-heading text-base font-semibold text-text ml-3.5"
+                                class="font-heading text-base font-semibold text-text ms-3.5"
                             >
-                                Burn after read
+                                {{ t("create.viewBurn") }}
                             </span>
                         </div>
                         <div
-                            class="w-32 flex items-center justify-end text-right"
+                            class="w-32 flex items-center justify-end text-end"
                         >
-                            <span class="text-sm text-text-muted"
-                                >1 view only</span
-                            >
+                            <span class="text-sm text-text-muted">
+                                {{ t("create.viewBurnDesc") }}
+                            </span>
                         </div>
                     </div>
 
@@ -557,7 +583,7 @@ async function handleCreateDrop() {
                         @click="selectViewMode('limited')"
                         @keydown.enter.space.prevent="selectViewMode('limited')"
                         :class="[
-                            'w-full h-14 px-4 flex items-center justify-between text-left transition-colors cursor-pointer select-none',
+                            'w-full h-14 px-4 flex items-center justify-between transition-colors cursor-pointer select-none',
                             viewMode === 'limited'
                                 ? 'bg-surface-hover/70 text-text'
                                 : 'text-text-muted hover:text-text hover:bg-surface/50',
@@ -578,13 +604,14 @@ async function handleCreateDrop() {
                                 />
                             </span>
                             <span
-                                class="font-heading text-base font-semibold text-text ml-3.5"
-                                >Limited</span
+                                class="font-heading text-base font-semibold text-text ms-3.5"
                             >
+                                {{ t("create.viewLimited") }}
+                            </span>
                         </div>
 
                         <div
-                            class="w-34 flex items-center justify-end text-right gap-1.5"
+                            class="w-34 flex items-center justify-end text-end gap-1.5"
                             @click.stop
                         >
                             <template v-if="viewMode === 'limited'">
@@ -604,9 +631,9 @@ async function handleCreateDrop() {
                                             : 'border-border focus:border-text',
                                     ]"
                                 />
-                                <span class="text-sm text-text-muted"
-                                    >views</span
-                                >
+                                <span class="text-sm text-text-muted">
+                                    {{ t("create.viewLimitedUnit") }}
+                                </span>
                             </template>
                         </div>
                     </div>
@@ -619,7 +646,7 @@ async function handleCreateDrop() {
                             selectViewMode('unlimited')
                         "
                         :class="[
-                            'w-full h-14 px-4 flex items-center justify-between text-left transition-colors cursor-pointer select-none',
+                            'w-full h-14 px-4 flex items-center justify-between transition-colors cursor-pointer select-none',
                             viewMode === 'unlimited'
                                 ? 'bg-surface-hover/70 text-text'
                                 : 'text-text-muted hover:text-text hover:bg-surface/50',
@@ -640,9 +667,17 @@ async function handleCreateDrop() {
                                 />
                             </span>
                             <span
-                                class="font-heading text-base font-semibold text-text ml-3.5"
-                                >Unlimited</span
+                                class="font-heading text-base font-semibold text-text ms-3.5"
                             >
+                                {{ t("create.viewUnlimited") }}
+                            </span>
+                        </div>
+                        <div
+                            class="w-32 flex items-center justify-end text-end"
+                        >
+                            <span class="text-sm text-text-muted">
+                                {{ t("create.viewUnlimitedDesc") }}
+                            </span>
                         </div>
                     </div>
                 </div>
@@ -651,7 +686,7 @@ async function handleCreateDrop() {
                     v-if="viewsError"
                     class="mt-1.5 text-sm text-danger font-medium"
                 >
-                    {{ viewsError }}
+                    {{ translateError(viewsError) }}
                 </p>
             </div>
 
@@ -661,7 +696,7 @@ async function handleCreateDrop() {
                     for="password"
                     class="block font-heading text-base font-semibold text-text mb-2.5"
                 >
-                    Password
+                    {{ t("create.passwordLabel") }}
                 </label>
                 <div class="relative flex items-center">
                     <input
@@ -669,11 +704,11 @@ async function handleCreateDrop() {
                         v-model="password"
                         :type="showPassword ? 'text' : 'password'"
                         autocomplete="new-password"
-                        placeholder="Optional password (min. 8 characters)"
+                        :placeholder="t('create.passwordPlaceholder')"
                         @input="handlePasswordInput"
                         @blur="validatePassword"
                         :class="[
-                            'w-full h-12 pl-4 pr-11 text-base rounded-xl border bg-background text-text placeholder-text-subtle focus:outline-none transition-colors',
+                            'w-full h-12 ps-4 pe-11 text-base rounded-xl border bg-background text-text placeholder-text-subtle focus:outline-none transition-colors',
                             passwordError
                                 ? 'border-danger focus:border-danger'
                                 : 'border-border focus:border-text',
@@ -681,9 +716,9 @@ async function handleCreateDrop() {
                     />
                     <button
                         type="button"
-                        :aria-label="showPassword ? 'Hide password' : 'Show password'"
+                        :aria-label="showPassword ? t('create.hidePassword') : t('create.showPassword')"
                         @click="showPassword = !showPassword"
-                        class="absolute right-3 p-1 text-text-muted hover:text-text transition-colors cursor-pointer focus:outline-none"
+                        class="absolute end-3 p-1 text-text-muted hover:text-text transition-colors cursor-pointer focus:outline-none"
                     >
                         <!-- Visibility toggle (show) -->
                         <svg
@@ -721,9 +756,21 @@ async function handleCreateDrop() {
                 </div>
                 <div v-if="password" class="mt-2.5 space-y-1.5">
                     <div class="flex items-center justify-between text-sm font-heading">
-                        <span class="text-text-muted">Password strength</span>
+                        <span class="text-text-muted">
+                            {{ t("create.passwordStrength") }}
+                        </span>
                         <span :class="passwordStrength.colorClass" class="font-semibold">
-                            {{ passwordStrength.label }}
+                            {{
+                                passwordStrength.label === "Too short"
+                                    ? t("strength.tooShort")
+                                    : passwordStrength.label === "Weak"
+                                    ? t("strength.weak")
+                                    : passwordStrength.label === "Fair"
+                                    ? t("strength.fair")
+                                    : passwordStrength.label === "Good"
+                                    ? t("strength.good")
+                                    : t("strength.strong")
+                            }}
                         </span>
                     </div>
                     <div class="grid grid-cols-4 gap-1.5 h-1">
@@ -748,14 +795,14 @@ async function handleCreateDrop() {
                     @click="handleCreateDrop"
                     class="w-full h-12 px-6 font-heading text-base font-semibold bg-primary hover:bg-neutral-200 text-primary-text rounded-xl transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-surface disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-primary shadow-sm"
                 >
-                    {{ isLoading ? "Creating drop..." : "Create drop" }}
+                    {{ isLoading ? t("create.submitting") : t("create.submit") }}
                 </button>
 
                 <p
                     v-if="submitError"
                     class="mt-2 text-sm text-danger font-medium"
                 >
-                    {{ submitError }}
+                    {{ translateError(submitError) }}
                 </p>
             </div>
         </div>

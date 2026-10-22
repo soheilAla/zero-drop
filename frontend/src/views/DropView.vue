@@ -2,9 +2,11 @@
 import { onMounted, ref } from "vue";
 import { RouterLink, useRoute } from "vue-router";
 import { consumeDrop, type DropResponse, getDrop } from "@/api/drops";
+import AppHeader from "@/components/AppHeader.vue";
 import MarkdownPreview from "@/components/MarkdownPreview.vue";
 import { base64UrlToBytes, bytesToBase64Url } from "@/crypto/base64url";
 import { decryptContent, decryptContentWithPassword } from "@/crypto/encryption";
+import { t, translateError } from "@/i18n";
 
 const route = useRoute();
 
@@ -54,7 +56,7 @@ async function loadAndDecryptDrop() {
   }
 
   if (!dropId) {
-    errorMessage.value = "Drop ID is missing from the URL.";
+    errorMessage.value = "view.errorMissingId";
     isLoading.value = false;
     return;
   }
@@ -63,9 +65,9 @@ async function loadAndDecryptDrop() {
     drop.value = await getDrop(dropId);
   } catch (err: unknown) {
     if (err instanceof Error && err.message.toLowerCase().includes("not found")) {
-      errorMessage.value = "Drop not found or it has already expired / been consumed.";
+      errorMessage.value = "view.errorNotFound";
     } else {
-      errorMessage.value = err instanceof Error ? err.message : "Failed to fetch drop.";
+      errorMessage.value = err instanceof Error ? err.message : "view.errorFetch";
     }
     isLoading.value = false;
     return;
@@ -77,7 +79,7 @@ async function loadAndDecryptDrop() {
   }
 
   if (!hashKey) {
-    errorMessage.value = "Decryption key is missing from the URL. Please verify the full link.";
+    errorMessage.value = "view.errorMissingKey";
     isLoading.value = false;
     return;
   }
@@ -86,12 +88,12 @@ async function loadAndDecryptDrop() {
   try {
     keyBytes = base64UrlToBytes(hashKey);
     if (keyBytes.length !== 32) {
-      errorMessage.value = "Invalid decryption key length.";
+      errorMessage.value = "view.errorKeyLength";
       isLoading.value = false;
       return;
     }
   } catch {
-    errorMessage.value = "Invalid decryption key format.";
+    errorMessage.value = "view.errorKeyFormat";
     isLoading.value = false;
     return;
   }
@@ -104,9 +106,9 @@ async function loadAndDecryptDrop() {
     pendingConsumeToken = bytesToBase64Url(consumeToken);
   } catch (err: unknown) {
     if (err instanceof Error && err.message.toLowerCase().includes("not found")) {
-      errorMessage.value = "Drop not found or it has already expired / been consumed.";
+      errorMessage.value = "view.errorNotFound";
     } else {
-      errorMessage.value = "Decryption failed. The key may be invalid or the data corrupted.";
+      errorMessage.value = "view.errorDecrypt";
     }
     isLoading.value = false;
     return;
@@ -130,9 +132,9 @@ async function handleReveal() {
   } catch (err: unknown) {
     drop.value = null;
     if (err instanceof Error && err.message.toLowerCase().includes("not found")) {
-      errorMessage.value = "Drop not found or it has already expired / been consumed.";
+      errorMessage.value = "view.errorNotFound";
     } else {
-      errorMessage.value = err instanceof Error ? err.message : "Failed to consume drop.";
+      errorMessage.value = err instanceof Error ? err.message : "view.errorConsume";
     }
   } finally {
     isLoading.value = false;
@@ -145,7 +147,7 @@ async function handleUnlock() {
   }
 
   if (!password.value) {
-    errorMessage.value = "Invalid password.";
+    errorMessage.value = "view.invalidPassword";
     return;
   }
 
@@ -168,14 +170,14 @@ async function handleUnlock() {
       await consumeDrop(drop.value.id, bytesToBase64Url(consumeToken));
     } catch {
       drop.value = null;
-      errorMessage.value = "Drop not found or it has already expired / been consumed.";
+      errorMessage.value = "view.errorNotFound";
       return;
     }
 
     decryptedSecret.value = plaintext;
     isRevealed.value = true;
   } catch {
-    errorMessage.value = "Invalid password.";
+    errorMessage.value = "view.invalidPassword";
   } finally {
     isLoading.value = false;
   }
@@ -187,18 +189,21 @@ onMounted(() => {
 </script>
 
 <template>
-    <section
-        class="w-full max-w-xl p-6 sm:p-8 bg-surface rounded-3xl border border-border"
-    >
+    <div class="w-full max-w-xl flex flex-col items-center">
+        <AppHeader />
+
+        <section
+            class="w-full p-6 sm:p-8 bg-surface rounded-3xl border border-border"
+        >
         <h1
             class="font-heading text-2xl sm:text-3xl font-semibold text-text mb-6"
         >
-            Secure drop
+            {{ t("view.title") }}
         </h1>
 
         <div v-if="isLoading && !drop" class="py-10 text-center space-y-3">
             <p class="text-base text-text-muted">
-                Fetching and decrypting drop...
+                {{ t("view.loading") }}
             </p>
         </div>
 
@@ -207,7 +212,7 @@ onMounted(() => {
                 class="p-4 rounded-xl bg-background border border-danger/40 text-danger"
             >
                 <p class="text-sm font-medium">
-                    {{ errorMessage }}
+                    {{ translateError(errorMessage) }}
                 </p>
             </div>
 
@@ -216,7 +221,7 @@ onMounted(() => {
                     to="/"
                     class="w-full h-12 px-6 flex items-center justify-center font-heading text-base font-semibold bg-primary hover:bg-neutral-200 text-primary-text rounded-xl transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-surface shadow-sm"
                 >
-                    Create a new drop
+                    {{ t("view.createNew") }}
                 </RouterLink>
             </div>
         </div>
@@ -227,19 +232,19 @@ onMounted(() => {
                     for="password"
                     class="block font-heading text-base font-semibold text-text mb-2"
                 >
-                    Password
+                    {{ t("view.passwordLabel") }}
                 </label>
                 <div class="relative flex items-center">
                     <input
                         id="password"
                         v-model="password"
                         :type="showPassword ? 'text' : 'password'"
-                        placeholder="Enter password"
+                        :placeholder="t('view.passwordPlaceholder')"
                         autocomplete="current-password"
                         @input="errorMessage = ''"
                         @keydown.enter="handleUnlock"
                         :class="[
-                            'w-full h-12 pl-4 pr-11 text-base rounded-xl border bg-background text-text focus:outline-none transition-colors',
+                            'w-full h-12 ps-4 pe-11 text-base rounded-xl border bg-background text-text focus:outline-none transition-colors',
                             errorMessage
                                 ? 'border-danger focus:border-danger'
                                 : 'border-border focus:border-text',
@@ -247,11 +252,11 @@ onMounted(() => {
                     />
                     <button
                         type="button"
-                        :aria-label="showPassword ? 'Hide password' : 'Show password'"
+                        :aria-label="showPassword ? t('create.hidePassword') : t('create.showPassword')"
                         @click="showPassword = !showPassword"
-                        class="absolute right-3 p-1 text-text-muted hover:text-text transition-colors cursor-pointer focus:outline-none"
+                        class="absolute end-3 p-1 text-text-muted hover:text-text transition-colors cursor-pointer focus:outline-none"
                     >
-                        <!-- Visibility toggle (show) -->
+                        <!-- Eye Slash (visible password) -->
                         <svg
                             v-if="showPassword"
                             viewBox="0 0 20 20"
@@ -268,7 +273,7 @@ onMounted(() => {
                                 d="M10.748 13.93l2.523 2.523a9.987 9.987 0 01-3.27.547c-4.258 0-7.894-2.66-9.337-6.41a1.651 1.651 0 010-1.186A10.007 10.007 0 014.168 5.477L6.59 7.899a4 4 0 004.159 6.03z"
                             />
                         </svg>
-                        <!-- Visibility toggle (hide) -->
+                        <!-- Eye (hidden password) -->
                         <svg
                             v-else
                             viewBox="0 0 20 20"
@@ -289,7 +294,7 @@ onMounted(() => {
                     v-if="errorMessage"
                     class="mt-2 text-sm font-medium text-danger"
                 >
-                    {{ errorMessage }}
+                    {{ translateError(errorMessage) }}
                 </p>
             </div>
 
@@ -300,14 +305,14 @@ onMounted(() => {
                     @click="handleUnlock"
                     class="w-full h-12 px-6 font-heading text-base font-semibold bg-primary hover:bg-neutral-200 text-primary-text rounded-xl transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-surface disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-primary shadow-sm"
                 >
-                    {{ isLoading ? "Unlocking..." : "Unlock" }}
+                    {{ isLoading ? t("view.unlocking") : t("view.unlock") }}
                 </button>
             </div>
         </div>
 
         <div v-else-if="!isRevealed && !drop?.kdf_salt" class="space-y-5">
             <p class="text-base text-text-muted leading-relaxed">
-                This drop is ready to be revealed.
+                {{ t("view.readyPrompt") }}
             </p>
 
             <div class="pt-2">
@@ -317,7 +322,7 @@ onMounted(() => {
                     @click="handleReveal"
                     class="w-full h-12 px-6 font-heading text-base font-semibold bg-primary hover:bg-neutral-200 text-primary-text rounded-xl transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-surface disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-primary shadow-sm"
                 >
-                    {{ isLoading ? "Revealing..." : "Reveal drop" }}
+                    {{ isLoading ? t("view.revealing") : t("view.reveal") }}
                 </button>
             </div>
         </div>
@@ -329,7 +334,7 @@ onMounted(() => {
                         for="decrypted-secret"
                         class="block font-heading text-base font-semibold text-text"
                     >
-                        Secret message
+                        {{ t("view.secretLabel") }}
                     </label>
                     <div class="flex items-center gap-3">
                         <button
@@ -364,7 +369,7 @@ onMounted(() => {
                                     d="M5 3a2 2 0 00-2 2v6a2 2 0 002 2V5h8a2 2 0 00-2-2H5z"
                                 />
                             </svg>
-                            <span>{{ isCopied ? "Copied!" : "Copy" }}</span>
+                            <span>{{ isCopied ? t("created.copied") : t("view.copy") }}</span>
                         </button>
                         <div
                             role="tablist"
@@ -383,7 +388,7 @@ onMounted(() => {
                                         : 'text-text-muted hover:text-text',
                                 ]"
                             >
-                                Raw
+                                {{ t("create.modeRaw") }}
                             </button>
                             <button
                                 type="button"
@@ -397,7 +402,7 @@ onMounted(() => {
                                         : 'text-text-muted hover:text-text',
                                 ]"
                             >
-                                Preview
+                                {{ t("create.modePreview") }}
                             </button>
                         </div>
                     </div>
@@ -407,7 +412,10 @@ onMounted(() => {
                     v-show="viewerMode === 'preview'"
                     class="w-full min-h-48 max-h-120 p-3.5 text-base leading-relaxed rounded-xl bg-background text-text border border-border overflow-y-auto"
                 >
-                    <MarkdownPreview :content="decryptedSecret" />
+                    <MarkdownPreview
+                        :content="decryptedSecret"
+                        :placeholder="t('create.emptyPreview')"
+                    />
                 </div>
 
                 <textarea
@@ -425,9 +433,10 @@ onMounted(() => {
                     to="/"
                     class="w-full h-12 px-6 flex items-center justify-center font-heading text-base font-semibold bg-primary hover:bg-neutral-200 text-primary-text rounded-xl transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-surface shadow-sm"
                 >
-                    Create a new drop
+                    {{ t("view.createNew") }}
                 </RouterLink>
             </div>
         </div>
-    </section>
+        </section>
+    </div>
 </template>

@@ -9,7 +9,7 @@
     "lint": "biome check .",
     "lint:fix": "biome check --write .",
     "format": "biome format --write .",
-    "test": "node --experimental-strip-types --test src/utils/markdown.test.ts",
+    "test": "node --experimental-strip-types --test src/utils/password.test.ts src/utils/markdown.test.ts",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -24,6 +24,7 @@
     "@biomejs/biome": "^2.5.14",
     "@fontsource/ibm-plex-sans": "^5.3.0",
     "@fontsource/space-grotesk": "^5.3.0",
+    "@fontsource/vazirmatn": "^5.3.0",
     "@types/jsdom": "^30.0.0",
     "@types/node": "^24.13.3",
     "@vitejs/plugin-vue": "^6.0.8",
