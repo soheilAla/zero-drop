@@ -8,6 +8,22 @@ from starlette.responses import JSONResponse
 from app.core.config import settings
 
 
+def get_client_ip(request: Request) -> str:
+    forwarded = request.headers.get("x-forwarded-for")
+    if forwarded:
+        # First IP in comma separated list is the original client
+        return forwarded.split(",")[0].strip()
+
+    real_ip = request.headers.get("x-real-ip")
+    if real_ip:
+        return real_ip.strip()
+
+    if request.client:
+        return request.client.host
+
+    return "unknown"
+
+
 class RateLimiter:
     def __init__(self, max_requests: int, window_seconds: int):
         self.max_requests = max_requests
@@ -41,7 +57,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
     async def dispatch(
         self, request: Request, call_next: RequestResponseEndpoint
     ) -> Response:
-        key = request.client.host
+        key = get_client_ip(request)
 
         if not rate_limiter.is_allowed(key):
             return JSONResponse(
