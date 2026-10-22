@@ -5,6 +5,7 @@ import { locale, setLocale, t } from "@/i18n";
 
 <template>
     <header
+        dir="ltr"
         class="w-full mb-8 sm:mb-10 flex items-center justify-between px-1 select-none"
     >
         <RouterLink

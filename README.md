@@ -1,12 +1,18 @@
-[English](README.en.md) | **فارسی**
+<p align="center">
+  <img src="frontend/public/favicon.svg" alt="Zero Drop" width="64" height="64" />
+</p>
 
-# زیرو دراپ (Zero Drop)
+<h1 align="center">Zero Drop</h1>
+
+<p align="center">
+  <a href="README.en.md">English</a> | <strong>فارسی</strong>
+</p>
 
 یه سرویس اشتراک‌گذاری متن، متمرکز بر حفظ حریم خصوصی با رمزنگاری سمت کلاینت.
 
 ![فرم ایجاد دراپ](docs/screenshots/create-form-fa.png)
 
-## ویژگی‌ها
+## ✨ ویژگی‌ها
 
 - رمزنگاری سمت کلاینت با AES-256-GCM (پیام و رمز عبور هرگز در سرور ذخیره نمی‌شن)
 - تعیین زمان انقضا و محدودیت تعداد بازدید
@@ -14,7 +20,7 @@
 - پشتیبانی از Markdown همراه با پیش‌نمایش زنده و ایمن‌سازی در برابر حملات XSS
 - دارای Rate limiting و هدرهای امنیتی
 
-## نحوه کار
+## ❓ نحوه کار
 
 ```text
 User
@@ -40,7 +46,7 @@ Browser
 - در دراپ‌های معمولی، کلید رمزگشایی داخل بخش فرگمنت URL نگهداری می‌شه و هیچ وقت به سرور نمی‌رسه.
 - در دراپ‌های محافظت‌شده با رمز، رمز عبور مستقیما در مرورگر برای تولید کلید رمزگشایی استفاده می‌شه و خود رمز هیچ وقت به سرور ارسال نمی‌شه.
 
-## تکنولوژی‌ها
+## 🛠️ تکنولوژی‌ها
 
 - FastAPI
 - PostgreSQL
@@ -49,9 +55,7 @@ Browser
 - TypeScript
 - Tailwind CSS
 
-## اجرای سریع با Docker
-
-اجرای تمام سرویس‌ها (دیتابیس، مایگریشن‌ها، بک‌اند و پروکسی فرانت‌اند):
+## 🚀 اجرای سریع با Docker
 
 ### ۱. تنظیم متغیرهای محیطی
 
@@ -59,8 +63,6 @@ Browser
 cp .env.example .env
 cp backend/.env.example backend/.env
 ```
-
-متغیرهای محیطی رو تنظیم کنید.
 
 ### ۲. بیلد و اجرای سرویس‌ها
 
@@ -70,7 +72,7 @@ docker compose up -d --build
 
 برنامه در آدرس `http://localhost:8080` و API در `http://localhost:8000` در دسترس خواهد بود.
 
-## توسعه محلی
+## 💻 توسعه لوکال
 
 ### ۱. بک‌اند
 
@@ -89,10 +91,11 @@ uv run fastapi dev
 
 ```bash
 cd frontend
-pnpm install && pnpm test
+pnpm install
+pnpm test
 pnpm dev
 ```
 
-## مجوز (License)
+## 📄 لایسنس
 
-این پروژه تحت مجوز [MIT](LICENSE) منتشر شده.
+این پروژه تحت لایسنس [MIT](LICENSE) منتشر شده.

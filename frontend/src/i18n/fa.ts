@@ -1,7 +1,7 @@
 export const fa = {
   // App & Layout
-  "app.title": "زیرو دراپ",
-  "app.footer.builtWith": "مهندسی‌شده برای تو توسط",
+  "app.title": "ZERO DROP",
+  "app.footer.builtWith": "مهندسی‌شده برای شما توسط",
 
   // CreateDropForm
   "create.title": "ساخت دراپ امن",

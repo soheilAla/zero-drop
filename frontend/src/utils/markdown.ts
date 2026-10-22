@@ -1,5 +1,5 @@
 import DOMPurify, { type DOMPurify as DOMPurifyInstance } from "dompurify";
-import { marked } from "marked";
+import { marked, type Tokens } from "marked";
 
 export function escapeHtml(text: string): string {
   return text
@@ -25,6 +25,13 @@ marked.use({
   renderer: {
     html({ text }: { text: string }) {
       return escapeHtml(text);
+    },
+    listitem(item: Tokens.ListItem) {
+      const text = this.parser.parse(item.tokens);
+      if (item.task) {
+        return `<li class="task-list-item">${text}</li>\n`;
+      }
+      return `<li>${text}</li>\n`;
     },
   },
 });
@@ -58,13 +65,19 @@ function getPurify(): DOMPurifyInstance | null {
     });
 
     purifyInstance.addHook("afterSanitizeElements", (node: Node) => {
-      if (
-        node.nodeType === 1 &&
-        ["P", "H1", "H2", "H3", "H4", "H5", "H6", "LI", "BLOCKQUOTE"].includes(
-          (node as Element).tagName,
-        )
-      ) {
-        (node as Element).setAttribute("dir", "auto");
+      if (node.nodeType === 1) {
+        const el = node as Element;
+        const tag = el.tagName;
+        if (["P", "H1", "H2", "H3", "H4", "H5", "H6", "UL", "OL", "BLOCKQUOTE"].includes(tag)) {
+          // If P is inside blockquote or li, let parent container resolve direction
+          if (
+            tag === "P" &&
+            (el.parentElement?.tagName === "BLOCKQUOTE" || el.parentElement?.tagName === "LI")
+          ) {
+            return;
+          }
+          el.setAttribute("dir", "auto");
+        }
       }
     });
 
