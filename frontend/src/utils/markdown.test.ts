@@ -79,8 +79,10 @@ const x: number = 42;
   assert.ok(output.includes("<strong>bold</strong>"));
   assert.ok(output.includes("<em>italic</em>"));
   assert.ok(output.includes("<del>strike</del>"));
-  assert.ok(output.includes('<li dir="auto">bullet 1</li>'));
-  assert.ok(output.includes('<li dir="auto">numbered 1</li>'));
+  assert.ok(output.includes('<ul dir="auto">'));
+  assert.ok(output.includes("<li>bullet 1</li>"));
+  assert.ok(output.includes('<ol dir="auto">'));
+  assert.ok(output.includes("<li>numbered 1</li>"));
   assert.ok(output.includes('<blockquote dir="auto">'));
   assert.ok(output.includes("<code>inline code</code>"));
   assert.ok(output.includes('<pre><code class="language-ts">'));
@@ -96,6 +98,14 @@ test("escapeHtml escapes special characters properly", () => {
     escaped,
     "&lt;script&gt;alert(&quot;xss &amp; &#039;danger&#039;&quot;)&lt;/script&gt;",
   );
+});
+
+test("renders task list checkboxes with task-list-item class without bullet", () => {
+  const md = "- [ ] todo task\n- [x] completed task";
+  const output = renderMarkdown(md);
+  assert.ok(output.includes('<li class="task-list-item">'));
+  assert.ok(output.includes('<input disabled="" type="checkbox">'));
+  assert.ok(output.includes('<input checked="" disabled="" type="checkbox">'));
 });
 
 test("handles empty and whitespace-only strings gracefully", () => {

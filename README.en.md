@@ -1,12 +1,18 @@
-**English** | [فارسی](README.md)
+<p align="center">
+  <img src="frontend/public/favicon.svg" alt="Zero Drop" width="64" height="64" />
+</p>
 
-# Zero Drop
+<h1 align="center">Zero Drop</h1>
+
+<p align="center">
+  <strong>English</strong> | <a href="README.md">فارسی</a>
+</p>
 
 A privacy-focused paste service with client-side encryption for text sharing.
 
 ![Create Drop Form](docs/screenshots/create-form-en.png)
 
-## Features
+## ✨ Features
 
 - Client-side encryption with AES-256-GCM (No plaintext or password stored on the server)
 - Expiration time and view limits
@@ -14,7 +20,7 @@ A privacy-focused paste service with client-side encryption for text sharing.
 - Markdown support with XSS sanitization
 - Rate limiting and security headers
 
-## How It Works
+## ❓ How It Works
 
 ```text
 User
@@ -41,7 +47,7 @@ For regular drops, the encryption key is kept in the URL fragment and never sent
 
 For password-protected drops, the password is used locally to derive the encryption key. The password itself is never sent to the server.
 
-## Stack
+## 🛠️ Stack
 
 - FastAPI
 - PostgreSQL
@@ -50,9 +56,7 @@ For password-protected drops, the password is used locally to derive the encrypt
 - TypeScript
 - Tailwind CSS
 
-## Quick Start with Docker
-
-Run the entire stack (Database, Migrations, Backend, and Frontend reverse proxy):
+## 🚀 Quick Start with Docker
 
 ### 1. Environment Setup
 
@@ -60,8 +64,6 @@ Run the entire stack (Database, Migrations, Backend, and Frontend reverse proxy)
 cp .env.example .env
 cp backend/.env.example backend/.env
 ```
-
-Set environment variables.
 
 ### 2. Build and start all services
 
@@ -71,7 +73,7 @@ docker compose up -d --build
 
 The application will be accessible at `http://localhost:8080`, with the API at `http://localhost:8000`.
 
-## Local Development
+## 💻 Local Development
 
 ### 1. Backend
 
@@ -95,6 +97,6 @@ pnpm test
 pnpm dev
 ```
 
-## License
+## 📄 License
 
 This project is licensed under the [MIT License](LICENSE).
